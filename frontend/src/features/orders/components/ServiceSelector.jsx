@@ -6,16 +6,16 @@ import { cn } from '../../../utils/cn'
 export function ServiceSelector({ services, loading, value, onChange, error }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
       </div>
     )
   }
 
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <legend className="sr-only">Service</legend>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {services.map((s) => {
           const selected = value === s.id
           return (

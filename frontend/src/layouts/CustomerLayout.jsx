@@ -6,10 +6,12 @@ import { useAuth } from '../features/auth/hooks/useAuth'
 
 /** Shell for signed-in customers. UI guard only — the backend still enforces access. */
 export function CustomerLayout() {
-  const { user, status } = useAuth()
+  const { user, status, loggedOut } = useAuth()
   const location = useLocation()
 
   if (status === 'ready' && !user) {
+    // After "Log out" go to a clean login page; otherwise remember where the customer was going.
+    if (loggedOut) return <Navigate to="/login" replace />
     const redirect = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }

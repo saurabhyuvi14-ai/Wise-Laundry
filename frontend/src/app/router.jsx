@@ -39,6 +39,7 @@ const routes = [
       { path: 'orders/:orderId', element: page(() => import('../pages/OrderDetailsPage')) },
       { path: 'orders/:orderId/confirmation', element: page(() => import('../pages/BookingConfirmationPage')) },
       { path: 'orders/:orderId/tracking', element: page(() => import('../pages/LiveTrackingPage')) },
+      { path: 'tracking', element: page(() => import('../pages/LiveTrackingPage').then((m) => ({ default: m.TrackingLatest }))) },
       { path: 'profile', element: page(() => import('../pages/ProfilePage')) },
       { path: 'addresses', element: page(() => import('../pages/AddressesPage')) },
       { path: '*', element: <Navigate to="/customer" replace /> },
