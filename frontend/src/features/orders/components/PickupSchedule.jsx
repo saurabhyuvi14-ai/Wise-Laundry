@@ -38,7 +38,7 @@ export function PickupSchedule({ date, slotHour, onChange, error }) {
 
   return (
     <div className="space-y-5">
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-2.5 text-sm font-medium text-navy-700">Pickup date</legend>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
           {days.map((d) => {
@@ -65,7 +65,7 @@ export function PickupSchedule({ date, slotHour, onChange, error }) {
         </div>
       </fieldset>
 
-      <fieldset disabled={!date}>
+      <fieldset disabled={!date} className="min-w-0">
         <legend className="mb-2.5 text-sm font-medium text-navy-700">Time window</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {SLOT_STARTS.map((h) => {

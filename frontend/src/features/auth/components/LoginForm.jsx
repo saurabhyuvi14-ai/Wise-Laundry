@@ -15,7 +15,7 @@ const schema = {
 export function LoginForm() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -23,7 +23,7 @@ export function LoginForm() {
 
   const set = (f) => (e) => setValues((v) => ({ ...v, [f]: e.target.value }))
 
-  async function submit(e, override) {
+  async function submit(e, override, destination) {
     e?.preventDefault()
     const body = override ?? values
     const found = validate(body, schema)
@@ -33,7 +33,7 @@ export function LoginForm() {
     setFormError('')
     try {
       await login(body)
-      navigate(safeRedirect(params.get('redirect')), { replace: true })
+      navigate(destination ?? safeRedirect(params.get('redirect')), { replace: true })
     } catch (err) {
       setFormError(err.message)
       setPending(false)
@@ -50,7 +50,11 @@ export function LoginForm() {
       {IS_DEMO && (
         <button
           type="button"
-          onClick={() => submit(null, { email: demoUser.email, password: 'demo' })}
+          onClick={() => {
+            // Demo login always opens the Dashboard (the app's home), whatever page was open before.
+            setParams({}, { replace: true })
+            submit(null, { email: demoUser.email, password: 'demo' }, '/customer')
+          }}
           className="w-full rounded-xl border border-dashed border-amber-300 bg-amber-50/60 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-50"
         >
           Continue with demo account
