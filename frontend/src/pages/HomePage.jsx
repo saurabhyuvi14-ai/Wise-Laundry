@@ -6,7 +6,7 @@ import { ServiceList } from '../features/services/components/ServiceList'
 const steps = [
   { icon: CalendarCheck, title: 'Book', text: 'Pick a service and a pickup window in under a minute.' },
   { icon: PackageCheck, title: 'Hand over', text: 'We collect your bag, then weigh or count it.' },
-  { icon: WashingMachine, title: 'We clean', text: 'Washed, ironed or dry cleaned — as you chose.' },
+  { icon: WashingMachine, title: 'We clean', text: 'Washed, folded or pressed — as you chose.' },
   { icon: Truck, title: 'Delivered', text: 'Fresh clothes back at your door. Track every stage.' },
 ]
 
@@ -16,12 +16,12 @@ function HeroPreview() {
     ['Pickup scheduled', true],
     ['Picked up', true],
     ['Washing', 'current'],
-    ['Ready', false],
+    ['On the way', false],
     ['Delivered', false],
   ]
   return (
     <div className="relative mx-auto w-full max-w-sm">
-      <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-br from-brand-100 via-brand-50 to-transparent blur-2xl" aria-hidden />
+      <div className="absolute inset-x-0 -inset-y-6 -z-10 sm:-inset-6 rounded-[2rem] bg-gradient-to-br from-brand-100 via-brand-50 to-transparent blur-2xl" aria-hidden />
       <div className="animate-fade-up rounded-2xl border border-line bg-white p-5 shadow-lift" style={{ animationDelay: '150ms' }}>
         <div className="flex items-center justify-between">
           <div>
@@ -65,11 +65,11 @@ export default function HomePage() {
               <span className="text-brand-700">Tracked till it's back.</span>
             </h1>
             <p className="mt-5 max-w-md text-lg text-navy-500">
-              Book a pickup, hand over your bag, and watch every stage — washing, ironing, delivery — from your phone.
+              Book a pickup, hand over your bag, and watch every step — pickup, washing, delivery — from your phone.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button to="/customer/book" size="lg">Book a Pickup <ArrowRight className="size-4" /></Button>
-              <Button to="/services" size="lg" variant="secondary">Explore Services</Button>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button to="/customer/book" size="lg" className="w-full sm:w-auto">Book a Pickup <ArrowRight className="size-4" /></Button>
+              <Button to="/services" size="lg" variant="secondary" className="w-full sm:w-auto">Explore Services</Button>
             </div>
           </div>
           <HeroPreview />

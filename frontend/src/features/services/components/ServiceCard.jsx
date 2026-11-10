@@ -14,19 +14,11 @@ function IronIcon(props) {
   )
 }
 
-function HangerIcon(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M10 5.5a2 2 0 1 1 2 2v1.6" />
-      <path d="M12 9.1 3.3 15.4A1.4 1.4 0 0 0 4.1 18h15.8a1.4 1.4 0 0 0 .8-2.6L12 9.1z" />
-    </svg>
-  )
-}
 
-const icons = { WASH_FOLD: Layers3, WASH_IRON: Shirt, IRON_ONLY: IronIcon, DRY_CLEAN: HangerIcon }
+const icons = { WASH_FOLD: Layers3, WASH_IRON: Shirt, IRON_ONLY: IronIcon }
 
 // Lets order snapshots (which only carry serviceName) still get the right icon.
-const byName = { 'wash & fold': 'WASH_FOLD', 'wash and fold': 'WASH_FOLD', 'wash & iron': 'WASH_IRON', 'wash and iron': 'WASH_IRON', 'iron only': 'IRON_ONLY', 'dry cleaning': 'DRY_CLEAN' }
+const byName = { 'wash & fold': 'WASH_FOLD', 'wash and fold': 'WASH_FOLD', 'wash & iron': 'WASH_IRON', 'wash and iron': 'WASH_IRON', 'iron only': 'IRON_ONLY' }
 
 export function ServiceIcon({ code, name, className = 'size-5' }) {
   const Icon = icons[code ?? byName[name?.toLowerCase()]] ?? WashingMachine

@@ -1,5 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom'
-import { RotateCw, Headset, FastForward, WifiOff, History } from 'lucide-react'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { RotateCw, Headset, FastForward, WifiOff, History, MapPin } from 'lucide-react'
 import { useState } from 'react'
 import { useTracking, useOrders } from '../features/orders/hooks/useOrders'
 import { TrackingTimeline } from '../features/tracking/components/TrackingTimeline'
@@ -10,12 +10,39 @@ import { Card, CardHeader, CardBody } from '../components/ui/Card'
 import { Select } from '../components/ui/Select'
 import { PageSkeleton } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
+import { EmptyState } from '../components/feedback/EmptyState'
+import { Button } from '../components/ui/Button'
 import { DemoBadge } from '../components/feedback/DemoBadge'
 import { useToast } from '../components/feedback/Toast'
 import { STATUS, isActive, stageLabel } from '../features/orders/components/OrderStatusBadge'
 import { formatDateTime, formatRelative } from '../utils/formatDate'
 import { api, IS_DEMO } from '../services/api-client'
 import { cn } from '../utils/cn'
+
+/** /customer/tracking — opens the most recently updated active order, or explains there is nothing to track. */
+export function TrackingLatest() {
+  const { data, loading, error, reload } = useOrders({ status: 'active', pageSize: 50 })
+  if (loading) return <PageSkeleton />
+  if (error) return <ErrorMessage error={error} onRetry={reload} />
+  const latest = [...(data ?? [])].sort((a, b) => {
+    const rank = (o) => (o.currentStatus === 'BOOKED' ? 1 : 0) // prefer orders already in progress
+    return rank(a) - rank(b) || new Date(b.updatedAt) - new Date(a.updatedAt)
+  })[0]
+  if (latest) return <Navigate to={`/customer/orders/${latest.id}/tracking`} replace />
+  return (
+    <>
+      <PageHeader title="Live Tracking" description="Track your laundry in real time." badge={<DemoBadge />} />
+      <Card>
+        <EmptyState
+          icon={MapPin}
+          title="Nothing to track right now"
+          description="You have no active orders. Past orders can still be opened from My Orders."
+          action={<Button to="/customer/orders" variant="secondary" size="sm">Go to My Orders</Button>}
+        />
+      </Card>
+    </>
+  )
+}
 
 export default function LiveTrackingPage() {
   const { orderId } = useParams()
@@ -86,7 +113,7 @@ export default function LiveTrackingPage() {
           </div>
         </Card>
 
-        <Card className="px-5 py-6 sm:px-8 sm:py-8">
+        <Card className="px-1 py-5 min-[360px]:px-2 sm:px-8 sm:py-8">
           <TrackingTimeline service={service} history={t.history} currentStatus={t.currentStatus} />
         </Card>
 

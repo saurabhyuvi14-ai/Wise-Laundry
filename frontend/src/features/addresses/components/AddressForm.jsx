@@ -54,7 +54,7 @@ export function AddressForm({ initial, onSubmit, onCancel, saving, defaultName, 
 
   return (
     <form onSubmit={handleSubmit} noValidate className="animate-fade-up space-y-5 rounded-xl border border-brand-200 bg-brand-50/30 p-4 sm:p-5">
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-sm font-medium text-navy-700">Save as</legend>
         <div className="flex gap-2">
           {labels.map(({ value, text, icon: Icon }) => (

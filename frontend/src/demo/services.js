@@ -1,4 +1,5 @@
 // DEMO FIXTURE — demo prices only. Real catalogue comes from GET /services.
+// Tracking stages per service (no separate Ironing / Ready steps — team decision).
 export const demoServices = [
   {
     id: 'service_wash_fold',
@@ -9,7 +10,7 @@ export const demoServices = [
     unitPricePaise: 6000,
     turnaroundHours: 48,
     active: true,
-    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED'],
+    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'OUT_FOR_DELIVERY', 'DELIVERED'],
   },
   {
     id: 'service_wash_iron',
@@ -20,7 +21,7 @@ export const demoServices = [
     unitPricePaise: 9000,
     turnaroundHours: 48,
     active: true,
-    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'IRONING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED'],
+    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'OUT_FOR_DELIVERY', 'DELIVERED'],
   },
   {
     id: 'service_iron_only',
@@ -31,18 +32,6 @@ export const demoServices = [
     unitPricePaise: 1500,
     turnaroundHours: 24,
     active: true,
-    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'IRONING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED'],
-  },
-  {
-    id: 'service_dry_clean',
-    code: 'DRY_CLEAN',
-    name: 'Dry Cleaning',
-    description: 'Gentle care for suits, sarees, jackets and delicates.',
-    pricingUnit: 'PIECE',
-    unitPricePaise: 15000,
-    turnaroundHours: 72,
-    active: true,
-    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED'],
-    stageLabels: { WASHING: 'Dry cleaning' },
+    stages: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'OUT_FOR_DELIVERY', 'DELIVERED'],
   },
 ]

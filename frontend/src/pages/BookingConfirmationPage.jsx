@@ -12,7 +12,7 @@ import { formatAddress } from '../features/addresses/components/AddressCard'
 const nextSteps = [
   { icon: PackageCheck, title: 'We pick up', text: 'Our partner arrives in your requested window. Just hand over the bag.' },
   { icon: Scale, title: 'We weigh & count', text: 'Final quantity and price are confirmed after collection.' },
-  { icon: MapPin, title: 'Track every stage', text: 'Follow washing, ironing and delivery in Live Tracking.' },
+  { icon: MapPin, title: 'Track every stage', text: 'Follow every step, from pickup to delivery, in Live Tracking.' },
 ]
 
 export default function BookingConfirmationPage() {

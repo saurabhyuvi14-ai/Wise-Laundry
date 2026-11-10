@@ -33,17 +33,17 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-line/70 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <Logo className="[&_svg]:size-8 [&_span]:text-[15px]" />
-        <nav aria-label="Main" className="flex items-center gap-5 sm:gap-7">
-          <NavLink to="/" end className={link}>Home</NavLink>
-          <NavLink to="/services" className={link}>Services</NavLink>
+        <nav aria-label="Main" className="flex items-center gap-3 sm:gap-7">
+          <NavLink to="/" end className={(s) => cn(link(s), 'hidden sm:inline')}>Home</NavLink>
+          <NavLink to="/services" className={(s) => cn(link(s), 'hidden min-[400px]:inline')}>Services</NavLink>
           {user ? (
-            <Button to="/customer" size="sm">Dashboard</Button>
+            <Button to="/customer" size="sm" className="whitespace-nowrap">Dashboard</Button>
           ) : (
             <>
               <NavLink to="/login" className={cn(link({}), 'hidden sm:inline')}>Log in</NavLink>
-              <Button to="/customer/book" size="sm">Book a Pickup</Button>
+              <Button to="/customer/book" size="sm" className="whitespace-nowrap">Book a Pickup</Button>
             </>
           )}
         </nav>
