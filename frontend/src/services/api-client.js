@@ -2,7 +2,14 @@ import { demoApi } from '../demo/demo-api'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 // The ONE place real HTTP calls go through. Used once VITE_USE_DEMO=false.
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1'
+// Defaults to '/api/v1' which proxies locally via Vite and routes same-origin in staging/production.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+
+function getCsrfToken() {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)wise_csrf_token=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
 
 export class ApiError extends Error {
   constructor(status, code, message, fields = {}) {
@@ -15,12 +22,19 @@ export class ApiError extends Error {
 
 export async function apiClient(path, { method = 'GET', body, headers = {}, signal } = {}) {
   let response
+  const csrf = getCsrfToken()
+  const defaultHeaders = {
+    ...(body ? { 'Content-Type': 'application/json' } : {}),
+    ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+    ...headers,
+  }
+
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       method,
       signal,
       credentials: 'include', // auth lives in an HttpOnly cookie set by Express
-      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      headers: defaultHeaders,
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch (err) {
@@ -64,6 +78,7 @@ export const laundryApi = {
     apiClient(`/orders?status=${status}&page=${page}&pageSize=${pageSize}`),
   getOrder: (id) => apiClient(`/orders/${id}`),
   getTracking: (id, signal) => apiClient(`/orders/${id}/tracking`, { signal }),
+  demoAdvance: (id) => apiClient(`/orders/${id}/advance`, { method: 'POST' }),
 }
 
 // Switch between demo fixtures and the real Express API with one env flag.
