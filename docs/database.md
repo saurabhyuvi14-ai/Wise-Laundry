@@ -1,7 +1,7 @@
-# Wise Laundry — Database Schema & Data Models (MongoDB / Mongoose)
+# Wise Laundry — Database Schema & Data Models (MongoDB Atlas / Mongoose)
 
-> **Database:** MongoDB (Mongoose ODM)  
-> **Encryption:** AES-256-GCM for sensitive fields at rest  
+> **Database:** MongoDB Atlas (Mongoose ODM)  
+> **Encryption:** AES-256-GCM for sensitive customer fields at rest  
 > **Target Collections:** `users`, `sessions`, `addresses`, `services`, `orders`, `slotcapacities`
 
 ---
@@ -58,6 +58,7 @@ Represents registered customers, delivery staff, and system administrators.
 }
 ```
 
+- **Compatibility Virtuals:** `ret.name` is mirrored from `ret.fullName` in `toJSON()` to ensure seamless compatibility with earlier frontends.
 - **Indexes:**
   - `email` (unique)
 
@@ -81,7 +82,7 @@ Revocable, stateful sessions for active user logins.
 ```
 
 - **Security Properties:**
-  - `tokenHash` prevents plaintext token leakage if the database is read.
+  - `tokenHash` prevents plaintext token leakage if the database is inspected.
   - Revocable immediately via `/api/v1/auth/logout` or upon password reset via `revokedAt`.
 
 ---
@@ -110,8 +111,9 @@ Saved pickup and delivery addresses with AES-256-GCM managed field encryption.
 ```
 
 - **Managed Field Encryption:**
-  - Address lines and driver instructions are never stored in plaintext in the database.
-  - Serialized via `toJSON()` into clean, transparently decrypted JSON output for authorized requests.
+  - Sensitive address lines and driver instructions are encrypted using AES-256-GCM before write operations.
+  - Transparently decrypted in `toJSON()` for authorized owners.
+  - `ret.pincode` is exposed as an alias of `ret.postalCode`.
 
 ---
 
@@ -177,12 +179,12 @@ Customer bookings, status history, and immutable encrypted address snapshots.
   estimatedDeliveryAt: { type: Date, default: null },
   statusHistory: [
     {
-      status: { type: String, enum: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'] },
+      status: { type: String, enum: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'IRONING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'] },
       changedAt: { type: Date, default: Date.now },
       note: String
     }
   ],
-  currentStatus: { type: String, enum: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'], default: 'BOOKED', index: true },
+  currentStatus: { type: String, enum: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'IRONING', 'READY_FOR_DELIVERY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'], default: 'BOOKED', index: true },
   idempotencyKey: { type: String, index: true, sparse: true },
   currency: { type: String, default: 'INR' },
   createdAt: Date,
@@ -205,7 +207,7 @@ Atomic tracking of customer bookings per 2-hour window to prevent overbooking.
   date: { type: String, required: true, index: true },
   slotHour: { type: Number, required: true, index: true },
   bookedCount: { type: Number, default: 0 },
-  maxCapacity: { type: Number, default: 10 },
+  maxCapacity: { type: Number, default: 5 },
   createdAt: Date,
   updatedAt: Date
 }
@@ -218,12 +220,9 @@ Atomic tracking of customer bookings per 2-hour window to prevent overbooking.
 
 ## 3. Database Separation Strategy
 
-1. **Local Development:**
-   - Default URI: `mongodb://127.0.0.1:27017/wise_laundry_dev`.
-   - Automatic fallback to an embedded in-memory database (`mongodb-memory-server`) if a local standalone MongoDB instance is not detected.
+1. **Development & Production:**
+   - Both environments connect directly to **MongoDB Atlas** over TLS via the `MONGODB_URI` connection string.
+   - Local database defaults and in-memory fallbacks have been removed from the server startup flow. The application fails fast if Atlas is unreachable or credentials are misconfigured.
 2. **Automated Testing:**
-   - Isolated database instance (`wise_laundry_test` or dynamic in-memory MongoMemoryServer).
-   - Zero side-effects on development or production databases.
-3. **Production:**
-   - Mongoose TLS connection to MongoDB Atlas / Managed Cluster.
-   - Enforced authentication and server-side secret management.
+   - Uses an ephemeral in-memory database runner (`mongodb-memory-server`) encapsulated within `tests/helpers/testDb.js`.
+   - Test runs are completely isolated and execute zero writes against any external development or production Atlas database.
