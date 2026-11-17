@@ -103,3 +103,4 @@ slotCapacitySchema.statics.getSlotAvailability = async function (
 }
 
 export const SlotCapacity = mongoose.model('SlotCapacity', slotCapacitySchema)
+

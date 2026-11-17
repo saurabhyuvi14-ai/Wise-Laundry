@@ -79,3 +79,4 @@ describe('Slot Capacity & Competing Slot Requests', () => {
     assert.equal(slotDoc.bookedCount, maxCapacity)
   })
 })
+

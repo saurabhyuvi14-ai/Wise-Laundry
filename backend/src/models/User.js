@@ -85,3 +85,4 @@ userSchema.methods.verifyPassword = async function (plainPassword) {
 }
 
 export const User = mongoose.model('User', userSchema)
+

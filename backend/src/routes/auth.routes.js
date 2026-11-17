@@ -15,3 +15,4 @@ router.post('/forgot-password', authLimiter, authController.forgotPassword)
 router.post('/reset-password', authController.resetPassword)
 
 export default router
+

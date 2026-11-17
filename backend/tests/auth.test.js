@@ -229,3 +229,4 @@ describe('Authentication & User Management', () => {
     assert.equal(newLogin.status, 200)
   })
 })
+

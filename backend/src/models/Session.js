@@ -81,3 +81,4 @@ sessionSchema.statics.revokeAllUserSessions = async function (userId) {
 }
 
 export const Session = mongoose.model('Session', sessionSchema)
+

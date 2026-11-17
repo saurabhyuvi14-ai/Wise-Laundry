@@ -4,3 +4,4 @@ export function privateCacheControl(_req, res, next) {
   res.setHeader('Expires', '0')
   next()
 }
+

@@ -8,3 +8,4 @@ const router = Router()
 router.patch('/me', requireAuth, privateCacheControl, usersController.updateMe)
 
 export default router
+

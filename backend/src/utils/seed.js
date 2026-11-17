@@ -44,3 +44,4 @@ export async function seedInitialServices() {
     logger.info('Default laundry services catalogue seeded into database')
   }
 }
+

@@ -9,3 +9,4 @@ export async function listSlots(req, res, next) {
     next(err)
   }
 }
+

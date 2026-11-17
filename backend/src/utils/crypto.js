@@ -60,3 +60,4 @@ export function generateSecureToken(bytes = 32) {
 export function hashToken(token) {
   return crypto.createHash('sha256').update(`${token}:${config.SESSION_SECRET}`).digest('hex')
 }
+

@@ -129,3 +129,4 @@ describe('Address Management & Field Encryption', () => {
     assert.equal(listBJson.data.length, 0)
   })
 })
+

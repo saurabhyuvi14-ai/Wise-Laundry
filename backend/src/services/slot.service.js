@@ -18,3 +18,4 @@ export async function reserveSlot(dateStr, slotHour) {
 export async function releaseSlot(dateStr, slotHour) {
   return SlotCapacity.releaseSlot(dateStr, slotHour)
 }
+

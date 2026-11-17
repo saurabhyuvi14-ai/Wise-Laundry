@@ -6,3 +6,4 @@ const router = Router()
 router.get('/', catalogController.listServices)
 
 export default router
+

@@ -21,3 +21,4 @@ export const authLimiter = rateLimit({
     next(ApiError.rateLimited('Too many authentication attempts. Please try again after 15 minutes.'))
   },
 })
+

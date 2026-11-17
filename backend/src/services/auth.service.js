@@ -106,3 +106,4 @@ export async function resetPassword({ token, newPassword }) {
 
   return { message: 'Password has been reset successfully. Please log in with your new password.' }
 }
+

@@ -101,3 +101,4 @@ addressSchema.methods.getDecryptedSnapshot = function () {
 }
 
 export const Address = mongoose.model('Address', addressSchema)
+

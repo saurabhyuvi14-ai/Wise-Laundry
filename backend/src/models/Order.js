@@ -197,3 +197,4 @@ orderSchema.methods.setEncryptedInstructions = function (rawInstructions) {
 }
 
 export const Order = mongoose.model('Order', orderSchema)
+
