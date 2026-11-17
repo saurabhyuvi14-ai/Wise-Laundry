@@ -1,22 +1,8 @@
 import { Router } from 'express'
-import { isDbReady } from '../config/db.js'
+import * as healthController from '../controllers/health.controller.js'
 
 const router = Router()
 
-// GET /api/v1/health
-router.get('/', (_req, res) => {
-  const dbOk = isDbReady()
-  const status = dbOk ? 200 : 503
-
-  return res.status(status).json({
-    status: dbOk ? 'healthy' : 'degraded',
-    uptimeSeconds: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString(),
-    services: {
-      api: 'up',
-      database: dbOk ? 'connected' : 'disconnected',
-    },
-  })
-})
+router.get('/', healthController.getHealth)
 
 export default router

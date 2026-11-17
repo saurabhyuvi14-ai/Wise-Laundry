@@ -3,28 +3,41 @@ import { z } from 'zod'
 
 dotenv.config()
 
+const isTest = process.env.NODE_ENV === 'test' || process.argv.some((arg) => arg.includes('test'))
+
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
-  MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/wise_laundry_dev'),
-  MONGODB_TEST_URI: z.string().default('mongodb://127.0.0.1:27017/wise_laundry_test'),
-  ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters').default('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'),
-  SESSION_SECRET: z.string().default('wise-laundry-session-secret-salt-key-999'),
-  ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000'),
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default(isTest ? 'test' : 'development'),
+  MONGODB_URI: z.string({
+    required_error: 'MONGODB_URI is required for connecting to MongoDB Atlas.',
+  }).min(1, 'MONGODB_URI cannot be empty.'),
+  MONGODB_TEST_URI: z.string().optional(),
+  ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters long for AES-256-GCM.'),
+  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters long for session token security.'),
+  ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000), // 15 mins
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(20),
-  DEFAULT_SLOT_CAPACITY: z.coerce.number().default(10),
+  DEFAULT_SLOT_CAPACITY: z.coerce.number().default(5),
 })
 
-const parsed = envSchema.safeParse(process.env)
+let parsed = envSchema.safeParse(process.env)
 
-if (!parsed.success) {
-  console.error('Invalid environment variables:', parsed.error.format())
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Invalid environment configuration in production')
-  }
+if (!parsed.success && isTest) {
+  parsed = envSchema.safeParse({
+    ...process.env,
+    NODE_ENV: 'test',
+    MONGODB_URI: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/wise_laundry_test',
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || 'wise_laundry_super_secret_encryption_key_32_bytes_min',
+    SESSION_SECRET: process.env.SESSION_SECRET || 'wise_laundry_session_secret_change_me_in_production_min_32',
+  })
 }
 
-export const config = parsed.success ? parsed.data : envSchema.parse({})
-export const allowedOriginsList = config.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+if (!parsed.success) {
+  console.error('❌ Invalid Environment Configuration:', parsed.error.format())
+  console.error('Please configure your MongoDB Atlas MONGODB_URI and required secret keys in backend/.env.')
+  process.exit(1)
+}
+
+export const config = parsed.data
+export const allowedOriginsList = parsed.data.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)

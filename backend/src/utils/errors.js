@@ -18,7 +18,7 @@ export class ApiError extends Error {
     return new ApiError(403, 'FORBIDDEN', message)
   }
 
-  static notFound(message = 'The requested resource was not found.') {
+  static notFound(message = 'We could not find that resource.') {
     return new ApiError(404, 'NOT_FOUND', message)
   }
 
@@ -30,7 +30,7 @@ export class ApiError extends Error {
     return new ApiError(429, 'RATE_LIMITED', message)
   }
 
-  static internal(message = 'An unexpected internal error occurred.') {
+  static internal(message = 'An unexpected internal server error occurred.') {
     return new ApiError(500, 'SERVER_ERROR', message)
   }
 }

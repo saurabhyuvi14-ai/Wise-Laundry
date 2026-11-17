@@ -26,7 +26,7 @@ const slotCapacitySchema = new mongoose.Schema(
     },
     maxCapacity: {
       type: Number,
-      default: () => config.DEFAULT_SLOT_CAPACITY,
+      default: () => config?.DEFAULT_SLOT_CAPACITY || 5,
     },
   },
   {
@@ -34,7 +34,11 @@ const slotCapacitySchema = new mongoose.Schema(
   },
 )
 
-slotCapacitySchema.statics.reserveSlot = async function (dateStr, slotHour, maxCapacity = config.DEFAULT_SLOT_CAPACITY) {
+slotCapacitySchema.statics.reserveSlot = async function (
+  dateStr,
+  slotHour,
+  maxCapacity = config?.DEFAULT_SLOT_CAPACITY || 5,
+) {
   const slotKey = `${dateStr}_${slotHour}`
 
   // Ensure slot document exists
@@ -79,7 +83,11 @@ slotCapacitySchema.statics.releaseSlot = async function (dateStr, slotHour) {
   )
 }
 
-slotCapacitySchema.statics.getSlotAvailability = async function (dateStr, slotHour, maxCapacity = config.DEFAULT_SLOT_CAPACITY) {
+slotCapacitySchema.statics.getSlotAvailability = async function (
+  dateStr,
+  slotHour,
+  maxCapacity = config?.DEFAULT_SLOT_CAPACITY || 5,
+) {
   const slotKey = `${dateStr}_${slotHour}`
   const found = await this.findOne({ slotKey })
   const booked = found ? found.bookedCount : 0

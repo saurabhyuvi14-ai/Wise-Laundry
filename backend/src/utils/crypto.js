@@ -1,13 +1,12 @@
 import crypto from 'node:crypto'
 import { config } from '../config/env.js'
 
-// Derive a 32-byte key buffer using SHA-256 on the configured secret
 const KEY = crypto.createHash('sha256').update(config.ENCRYPTION_KEY).digest()
 const ALGORITHM = 'aes-256-gcm'
 const PREFIX = 'v1'
 
 /**
- * Encrypts a plaintext string using AES-256-GCM with fresh 12-byte IV.
+ * Encrypts sensitive string using AES-256-GCM.
  * Output format: v1:ivHex:authTagHex:ciphertextHex
  */
 export function encrypt(text) {
@@ -23,7 +22,7 @@ export function encrypt(text) {
 
 /**
  * Decrypts a v1:ivHex:authTagHex:ciphertextHex string.
- * Gracefully falls back to raw text if not encrypted (supports legacy/unencrypted migration).
+ * Gracefully handles unencrypted text or returns safe placeholder if tampered.
  */
 export function decrypt(text) {
   if (text == null || text === '') return text
@@ -44,7 +43,6 @@ export function decrypt(text) {
     decrypted += decipher.final('utf8')
     return decrypted
   } catch {
-    // If decryption fails (e.g. tampering or bad key), return masked or throw
     return '[CORRUPTED_OR_TAMPERED]'
   }
 }
@@ -57,7 +55,7 @@ export function generateSecureToken(bytes = 32) {
 }
 
 /**
- * Deterministically hashes a token using SHA-256 with an internal salt.
+ * Hashes a token using SHA-256 with an internal salt from SESSION_SECRET.
  */
 export function hashToken(token) {
   return crypto.createHash('sha256').update(`${token}:${config.SESSION_SECRET}`).digest('hex')

@@ -13,7 +13,7 @@ import { ApiError } from './utils/errors.js'
 import authRoutes from './routes/auth.routes.js'
 import usersRoutes from './routes/users.routes.js'
 import addressesRoutes from './routes/addresses.routes.js'
-import servicesRoutes from './routes/services.routes.js'
+import catalogRoutes from './routes/catalog.routes.js'
 import slotsRoutes from './routes/slots.routes.js'
 import ordersRoutes from './routes/orders.routes.js'
 import healthRoutes from './routes/health.routes.js'
@@ -26,7 +26,7 @@ app.set('trust proxy', 1)
 // Security headers
 app.use(
   helmet({
-    contentSecurityPolicy: config.NODE_ENV === 'production' ? undefined : false,
+    contentSecurityPolicy: config?.NODE_ENV === 'production' ? undefined : false,
     crossOriginEmbedderPolicy: false,
   }),
 )
@@ -55,7 +55,7 @@ app.use(express.urlencoded({ extended: true, limit: '100kb' }))
 app.use(cookieParser())
 
 // Structured request logging with redactions
-if (config.NODE_ENV !== 'test') {
+if (config?.NODE_ENV !== 'test') {
   app.use(pinoHttp({ logger }))
 }
 
@@ -67,12 +67,13 @@ app.use('/api', csrfProtection)
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/users', usersRoutes)
 app.use('/api/v1/addresses', addressesRoutes)
-app.use('/api/v1/services', servicesRoutes)
+app.use('/api/v1/services', catalogRoutes)
+app.use('/api/v1/catalog', catalogRoutes)
 app.use('/api/v1/slots', slotsRoutes)
 app.use('/api/v1/orders', ordersRoutes)
 app.use('/api/v1/health', healthRoutes)
 
-// Catch-all 404 for undefined endpoints
+// Catch-all 404 for undefined API endpoints
 app.use('/api', (_req, _res, next) => {
   next(ApiError.notFound('API endpoint not found.'))
 })

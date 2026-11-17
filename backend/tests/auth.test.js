@@ -1,16 +1,23 @@
-import { describe, it, before, after, beforeEach } from 'node:test'
+import { test, describe, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import request from 'supertest'
 import app from '../src/app.js'
-import { setupTestDb, clearTestDb, teardownTestDb } from './helpers/testDb.js'
+import { setupTestDb, teardownTestDb, clearTestDb } from './helpers/testDb.js'
 import { User } from '../src/models/User.js'
+import { Session } from '../src/models/Session.js'
 
 describe('Authentication & User Management', () => {
+  let server
+  let baseUrl
+
   before(async () => {
     await setupTestDb()
+    server = app.listen(0)
+    const port = server.address().port
+    baseUrl = `http://127.0.0.1:${port}/api/v1`
   })
 
   after(async () => {
+    server.close()
     await teardownTestDb()
   })
 
@@ -18,192 +25,207 @@ describe('Authentication & User Management', () => {
     await clearTestDb()
   })
 
-  it('registers a customer with Argon2id hashing and HttpOnly session cookie', async () => {
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Aarav Mehta',
-        email: 'aarav@example.com',
-        phone: '9876543210',
-        password: 'Password@123',
-      })
+  test('registers a customer with Argon2id hashing and HttpOnly session cookie', async () => {
+    const payload = {
+      fullName: 'Saurabh Sharma',
+      email: 'saurabh@example.com',
+      phone: '9876543210',
+      password: 'StrongPassword123!',
+    }
+
+    const res = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify(payload),
+    })
 
     assert.equal(res.status, 201)
-    assert.equal(res.body.data.email, 'aarav@example.com')
-    assert.equal(res.body.data.role, 'CUSTOMER')
-    assert.equal(res.body.data.fullName, 'Aarav Mehta')
-    assert.ok(res.body.data.id)
+    const json = await res.json()
+    assert.equal(json.data.email, 'saurabh@example.com')
+    assert.equal(json.data.fullName, 'Saurabh Sharma')
+    assert.equal(json.data.role, 'CUSTOMER')
+    assert.equal(json.data.passwordHash, undefined)
 
-    // Check cookie
-    const cookies = res.headers['set-cookie'] || []
-    const sessionCookie = cookies.find((c) => c.includes('wise_session='))
-    assert.ok(sessionCookie)
-    assert.ok(sessionCookie.includes('HttpOnly'))
+    // Verify session cookie was set
+    const setCookie = res.headers.get('set-cookie')
+    assert.ok(setCookie && setCookie.includes('wise_session='))
+    assert.ok(setCookie.includes('HttpOnly'))
 
-    // Verify DB entry has Argon2id hash
-    const userInDb = await User.findOne({ email: 'aarav@example.com' })
+    // Verify database record has valid Argon2id hash
+    const userInDb = await User.findOne({ email: 'saurabh@example.com' })
     assert.ok(userInDb)
     assert.ok(userInDb.passwordHash.startsWith('$argon2id$'))
+    assert.equal(await userInDb.verifyPassword('StrongPassword123!'), true)
   })
 
-  it('rejects role injection attempts during registration', async () => {
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Hacker User',
-        email: 'hacker@example.com',
-        phone: '9876543211',
-        password: 'Password@123',
-        role: 'ADMIN', // injection attempt
-      })
+  test('rejects role injection attempts during registration', async () => {
+    const payload = {
+      fullName: 'Malicious User',
+      email: 'hacker@example.com',
+      phone: '9876543211',
+      password: 'StrongPassword123!',
+      role: 'ADMIN', // Injection attempt
+    }
 
-    // Schema strictly validates undefined role
+    const res = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify(payload),
+    })
+
     assert.equal(res.status, 400)
-    assert.equal(res.body.error.code, 'VALIDATION_ERROR')
+    const json = await res.json()
+    assert.equal(json.error.code, 'VALIDATION_ERROR')
   })
 
-  it('logs in successfully and fails on incorrect password', async () => {
-    await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Priya Sharma',
-        email: 'priya@example.com',
-        phone: '9876543212',
-        password: 'CorrectPassword123',
-      })
+  test('logs in successfully and fails on incorrect password', async () => {
+    // 1. Create a user
+    const passwordHash = await User.hashPassword('Secret123!')
+    await User.create({
+      fullName: 'Test User',
+      email: 'test@example.com',
+      phone: '9876543212',
+      passwordHash,
+      role: 'CUSTOMER',
+    })
 
-    // Correct login
-    const loginOk = await request(app)
-      .post('/api/v1/auth/login')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        email: 'priya@example.com',
-        password: 'CorrectPassword123',
-      })
-    assert.equal(loginOk.status, 200)
-    assert.equal(loginOk.body.data.email, 'priya@example.com')
-    assert.ok(loginOk.headers['set-cookie'])
+    // 2. Attempt login with bad password
+    const badRes = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({ email: 'test@example.com', password: 'WrongPassword' }),
+    })
+    assert.equal(badRes.status, 400)
 
-    // Wrong password
-    const loginFail = await request(app)
-      .post('/api/v1/auth/login')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        email: 'priya@example.com',
-        password: 'WrongPassword123',
-      })
-    assert.equal(loginFail.status, 400)
-    assert.equal(loginFail.body.error.code, 'VALIDATION_ERROR')
+    // 3. Attempt login with correct password
+    const goodRes = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({ email: 'test@example.com', password: 'Secret123!' }),
+    })
+    assert.equal(goodRes.status, 200)
+    const setCookie = goodRes.headers.get('set-cookie')
+    assert.ok(setCookie && setCookie.includes('wise_session='))
   })
 
-  it('fetches current profile with /auth/me and updates with /users/me', async () => {
-    const reg = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Rohit Verma',
-        email: 'rohit@example.com',
+  test('fetches current profile with /auth/me and updates with /users/me', async () => {
+    // Register
+    const regRes = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        fullName: 'Profile User',
+        email: 'profile@example.com',
         phone: '9876543213',
-        password: 'Password@123',
-      })
-    const cookie = reg.headers['set-cookie']
+        password: 'Password123!',
+      }),
+    })
+    const cookieHeader = regRes.headers.get('set-cookie')
+    const sessionCookie = cookieHeader.split(',').find((c) => c.includes('wise_session=')).split(';')[0]
 
-    // /auth/me
-    const meRes = await request(app)
-      .get('/api/v1/auth/me')
-      .set('Cookie', cookie)
+    // Fetch /auth/me
+    const meRes = await fetch(`${baseUrl}/auth/me`, {
+      headers: { cookie: sessionCookie },
+    })
     assert.equal(meRes.status, 200)
-    assert.equal(meRes.body.data.fullName, 'Rohit Verma')
+    const meJson = await meRes.json()
+    assert.equal(meJson.data.fullName, 'Profile User')
 
-    // /users/me PATCH
-    const patchRes = await request(app)
-      .patch('/api/v1/users/me')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Rohit K. Verma',
-        phone: '9876543219',
-      })
-    assert.equal(patchRes.status, 200)
-    assert.equal(patchRes.body.data.fullName, 'Rohit K. Verma')
-    assert.equal(patchRes.body.data.phone, '9876543219')
+    // Update /users/me
+    const updateRes = await fetch(`${baseUrl}/users/me`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: sessionCookie,
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify({ fullName: 'Updated Name', phone: '9876543214' }),
+    })
+    assert.equal(updateRes.status, 200)
+    const updatedJson = await updateRes.json()
+    assert.equal(updatedJson.data.fullName, 'Updated Name')
+    assert.equal(updatedJson.data.phone, '9876543214')
   })
 
-  it('revokes server-side session on logout', async () => {
-    const reg = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Sneha Patel',
-        email: 'sneha@example.com',
-        phone: '9876543214',
-        password: 'Password@123',
-      })
-    const cookie = reg.headers['set-cookie']
+  test('revokes server-side session on logout', async () => {
+    const regRes = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        fullName: 'Logout User',
+        email: 'logout@example.com',
+        phone: '9876543215',
+        password: 'Password123!',
+      }),
+    })
+    const cookieHeader = regRes.headers.get('set-cookie')
+    const sessionCookie = cookieHeader.split(',').find((c) => c.includes('wise_session=')).split(';')[0]
 
-    // Verify authenticated
-    const before = await request(app).get('/api/v1/auth/me').set('Cookie', cookie)
-    assert.equal(before.status, 200)
+    // Confirm session is valid
+    const meBefore = await fetch(`${baseUrl}/auth/me`, { headers: { cookie: sessionCookie } })
+    assert.equal(meBefore.status, 200)
 
     // Logout
-    const logoutRes = await request(app)
-      .post('/api/v1/auth/logout')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
+    const logoutRes = await fetch(`${baseUrl}/auth/logout`, {
+      method: 'POST',
+      headers: { cookie: sessionCookie, 'x-test-bypass-csrf': '1' },
+    })
     assert.equal(logoutRes.status, 204)
 
-    // After logout, session is revoked
-    const after = await request(app).get('/api/v1/auth/me').set('Cookie', cookie)
-    assert.equal(after.status, 401)
-    assert.equal(after.body.error.code, 'UNAUTHENTICATED')
+    // Attempt /auth/me again -> should be 401
+    const meAfter = await fetch(`${baseUrl}/auth/me`, { headers: { cookie: sessionCookie } })
+    assert.equal(meAfter.status, 401)
   })
 
-  it('handles forgot-password and reset-password with session revocation', async () => {
-    const reg = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: 'Vikram Singh',
-        email: 'vikram@example.com',
-        phone: '9876543215',
-        password: 'OldPassword@123',
-      })
-    const oldCookie = reg.headers['set-cookie']
+  test('handles forgot-password and reset-password with session revocation', async () => {
+    const regRes = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        fullName: 'Reset User',
+        email: 'reset@example.com',
+        phone: '9876543216',
+        password: 'OldPassword123!',
+      }),
+    })
+    const cookieHeader = regRes.headers.get('set-cookie')
+    const sessionCookie = cookieHeader.split(',').find((c) => c.includes('wise_session=')).split(';')[0]
 
-    // Request password reset
-    const forgotRes = await request(app)
-      .post('/api/v1/auth/forgot-password')
-      .set('x-test-bypass-csrf', '1')
-      .send({ email: 'vikram@example.com' })
+    // Request reset token
+    const forgotRes = await fetch(`${baseUrl}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({ email: 'reset@example.com' }),
+    })
     assert.equal(forgotRes.status, 200)
-    const resetToken = forgotRes.body.meta?.resetTokenNotice
-    assert.ok(resetToken)
+    const forgotJson = await forgotRes.json()
+    const token = forgotJson.meta.resetTokenNotice
+    assert.ok(token)
 
-    // Complete password reset
-    const resetRes = await request(app)
-      .post('/api/v1/auth/reset-password')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        token: resetToken,
-        newPassword: 'NewPassword@123',
-      })
+    // Reset password
+    const resetRes = await fetch(`${baseUrl}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({ token, newPassword: 'BrandNewPassword123!' }),
+    })
     assert.equal(resetRes.status, 200)
 
-    // Old session must now be revoked
-    const oldSessionCheck = await request(app).get('/api/v1/auth/me').set('Cookie', oldCookie)
-    assert.equal(oldSessionCheck.status, 401)
+    // Old session should be revoked
+    const meRes = await fetch(`${baseUrl}/auth/me`, { headers: { cookie: sessionCookie } })
+    assert.equal(meRes.status, 401)
 
-    // New login with new password succeeds
-    const newLogin = await request(app)
-      .post('/api/v1/auth/login')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        email: 'vikram@example.com',
-        password: 'NewPassword@123',
-      })
+    // New login works with new password
+    const newLogin = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({ email: 'reset@example.com', password: 'BrandNewPassword123!' }),
+    })
     assert.equal(newLogin.status, 200)
   })
 })

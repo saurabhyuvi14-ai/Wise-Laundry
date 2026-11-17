@@ -6,6 +6,7 @@ import { seedInitialServices } from './utils/seed.js'
 
 async function startServer() {
   try {
+    logger.info('Initializing Wise Laundry backend service...')
     await connectDatabase()
     await seedInitialServices()
 
@@ -17,10 +18,10 @@ async function startServer() {
     })
 
     const shutdown = async (signal) => {
-      logger.info({ signal }, 'Graceful shutdown initiated')
+      logger.info({ signal }, `Received ${signal}. Initiating graceful shutdown...`)
       server.close(async () => {
         await disconnectDatabase()
-        logger.info('Database disconnected and server closed')
+        logger.info('Database disconnected and HTTP server closed gracefully')
         process.exit(0)
       })
       setTimeout(() => {
@@ -32,7 +33,7 @@ async function startServer() {
     process.on('SIGTERM', () => shutdown('SIGTERM'))
     process.on('SIGINT', () => shutdown('SIGINT'))
   } catch (err) {
-    logger.fatal({ err: err.message }, 'Failed to start server')
+    logger.fatal({ err: err.message }, 'Failed to start server. Terminating process.')
     process.exit(1)
   }
 }

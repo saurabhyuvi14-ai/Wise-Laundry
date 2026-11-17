@@ -2,31 +2,27 @@ import mongoose from 'mongoose'
 import { config } from './env.js'
 import { logger } from './logger.js'
 
-let memoryServerInstance = null
-
 export async function connectDatabase(overrideUri) {
-  let uri = overrideUri || (config.NODE_ENV === 'test' ? config.MONGODB_TEST_URI : config.MONGODB_URI)
+  const uri = overrideUri || (config.NODE_ENV === 'test' ? (config.MONGODB_TEST_URI || 'mongodb://127.0.0.1:27017/wise_laundry_test') : config.MONGODB_URI)
+
+  if (!uri) {
+    const errorMsg = 'No MongoDB connection URI provided. Configure MONGODB_URI for your MongoDB Atlas cluster.'
+    logger.fatal(errorMsg)
+    throw new Error(errorMsg)
+  }
 
   try {
     mongoose.set('strictQuery', true)
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 5000,
     })
-    logger.info({ uri: sanitizeUri(uri) }, 'Connected to MongoDB')
+    logger.info({ uri: sanitizeUri(uri) }, 'Connected to MongoDB Atlas database')
     return mongoose.connection
   } catch (err) {
-    if (config.NODE_ENV === 'development' && !overrideUri) {
-      logger.warn('External MongoDB not reachable. Starting embedded MongoMemoryServer for development...')
-      const { MongoMemoryServer } = await import('mongodb-memory-server')
-      memoryServerInstance = await MongoMemoryServer.create({
-        instance: { dbName: 'wise_laundry_dev' },
-      })
-      uri = memoryServerInstance.getUri()
-      await mongoose.connect(uri)
-      logger.info({ uri: sanitizeUri(uri) }, 'Connected to embedded MongoMemoryServer')
-      return mongoose.connection
-    }
-    logger.error({ err: err.message }, 'MongoDB connection failure')
+    logger.fatal(
+      { err: err.message, uri: sanitizeUri(uri) },
+      'Failed to connect to MongoDB Atlas database. Please verify your Atlas cluster connection string, network access IP whitelist, and credentials in backend/.env',
+    )
     throw err
   }
 }
@@ -34,10 +30,7 @@ export async function connectDatabase(overrideUri) {
 export async function disconnectDatabase() {
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect()
-  }
-  if (memoryServerInstance) {
-    await memoryServerInstance.stop()
-    memoryServerInstance = null
+    logger.info('Disconnected from MongoDB')
   }
 }
 
@@ -46,7 +39,8 @@ export function isDbReady() {
   return mongoose.connection.readyState === 1
 }
 
-function sanitizeUri(uri) {
+export function sanitizeUri(uri) {
+  if (!uri) return 'undefined'
   try {
     return uri.replace(/:([^@]+)@/, ':***@')
   } catch {

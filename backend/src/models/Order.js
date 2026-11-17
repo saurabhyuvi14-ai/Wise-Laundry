@@ -33,7 +33,17 @@ const statusHistorySchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+      enum: [
+        'BOOKED',
+        'PICKED_UP',
+        'RECEIVED',
+        'WASHING',
+        'IRONING',
+        'READY_FOR_DELIVERY',
+        'OUT_FOR_DELIVERY',
+        'DELIVERED',
+        'CANCELLED',
+      ],
     },
     changedAt: {
       type: Date,
@@ -104,7 +114,17 @@ const orderSchema = new mongoose.Schema(
     },
     currentStatus: {
       type: String,
-      enum: ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+      enum: [
+        'BOOKED',
+        'PICKED_UP',
+        'RECEIVED',
+        'WASHING',
+        'IRONING',
+        'READY_FOR_DELIVERY',
+        'OUT_FOR_DELIVERY',
+        'DELIVERED',
+        'CANCELLED',
+      ],
       default: 'BOOKED',
       index: true,
     },
@@ -123,7 +143,6 @@ const orderSchema = new mongoose.Schema(
     toJSON: {
       transform(doc, ret) {
         ret.id = ret.orderIdString || ret._id.toString()
-        // Decrypt address snapshot
         if (ret.addressSnapshot) {
           ret.addressSnapshot = {
             label: ret.addressSnapshot.label,
@@ -134,18 +153,20 @@ const orderSchema = new mongoose.Schema(
             landmark: ret.addressSnapshot.landmark || '',
             city: ret.addressSnapshot.city,
             postalCode: ret.addressSnapshot.postalCode,
+            pincode: ret.addressSnapshot.postalCode,
             instructions: decrypt(ret.addressSnapshot.instructionsEncrypted) || '',
           }
         }
         ret.instructions = decrypt(ret.instructionsEncrypted) || ''
-        ret.updatedAt = ret.updatedAt ? ret.updatedAt.toISOString() : ret.createdAt.toISOString()
+        ret.updatedAt = ret.updatedAt ? ret.updatedAt.toISOString() : ret.createdAt ? ret.createdAt.toISOString() : new Date().toISOString()
         ret.createdAt = ret.createdAt ? ret.createdAt.toISOString() : new Date().toISOString()
         ret.pickupScheduledAt = ret.pickupScheduledAt ? ret.pickupScheduledAt.toISOString() : null
         ret.estimatedDeliveryAt = ret.estimatedDeliveryAt ? ret.estimatedDeliveryAt.toISOString() : null
 
-        // Calculate total paise if all items have quantities
         const priced = ret.items.length > 0 && ret.items.every((i) => i.quantity != null)
-        ret.totalPaise = priced ? Math.round(ret.items.reduce((acc, i) => acc + i.quantity * i.unitPricePaise, 0)) : null
+        ret.totalPaise = priced
+          ? Math.round(ret.items.reduce((acc, i) => acc + i.quantity * i.unitPricePaise, 0))
+          : null
 
         delete ret._id
         delete ret.__v

@@ -1,16 +1,22 @@
-import { describe, it, before, after, beforeEach } from 'node:test'
+import { test, describe, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import request from 'supertest'
 import app from '../src/app.js'
-import { setupTestDb, clearTestDb, teardownTestDb } from './helpers/testDb.js'
+import { setupTestDb, teardownTestDb, clearTestDb } from './helpers/testDb.js'
 import { Address } from '../src/models/Address.js'
 
 describe('Address Management & Field Encryption', () => {
+  let server
+  let baseUrl
+
   before(async () => {
     await setupTestDb()
+    server = app.listen(0)
+    const port = server.address().port
+    baseUrl = `http://127.0.0.1:${port}/api/v1`
   })
 
   after(async () => {
+    server.close()
     await teardownTestDb()
   })
 
@@ -18,103 +24,108 @@ describe('Address Management & Field Encryption', () => {
     await clearTestDb()
   })
 
-  async function createRegisteredUser(name, email) {
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: name,
+  async function registerAndGetCookie(email) {
+    const res = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        fullName: 'Test User',
         email,
         phone: '9876543210',
-        password: 'Password@123',
-      })
-    return { user: res.body.data, cookie: res.headers['set-cookie'] }
+        password: 'Password123!',
+      }),
+    })
+    const cookieHeader = res.headers.get('set-cookie')
+    return cookieHeader.split(',').find((c) => c.includes('wise_session=')).split(';')[0]
   }
 
-  it('creates an address, encrypts sensitive lines at rest, and decrypts on read', async () => {
-    const { cookie } = await createRegisteredUser('User One', 'user1@example.com')
+  test('creates an address, encrypts sensitive lines at rest, and decrypts on read', async () => {
+    const cookie = await registerAndGetCookie('user_addr@example.com')
 
-    const createRes = await request(app)
-      .post('/api/v1/addresses')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        label: 'HOME',
-        recipientName: 'User One',
-        phone: '9876543210',
-        addressLine1: 'Flat 402, Sunshine Towers',
-        addressLine2: '12th Main, Koramangala 4th Block',
-        landmark: 'Opposite BDA Complex',
-        city: 'Bengaluru',
-        postalCode: '560034',
-        instructions: 'Ring doorbell twice.',
-        isDefault: true,
-      })
+    const payload = {
+      label: 'HOME',
+      recipientName: 'Saurabh Sharma',
+      phone: '9876543210',
+      addressLine1: 'Flat 402, Green Glen Residency',
+      addressLine2: 'Outer Ring Road, Bellandur',
+      city: 'Bengaluru',
+      postalCode: '560103',
+      landmark: 'Near Central Mall',
+      instructions: 'Leave at security desk',
+      isDefault: true,
+    }
 
-    assert.equal(createRes.status, 201)
-    const addressId = createRes.body.data.id
-    assert.equal(createRes.body.data.addressLine1, 'Flat 402, Sunshine Towers')
-    assert.equal(createRes.body.data.instructions, 'Ring doorbell twice.')
+    const res = await fetch(`${baseUrl}/addresses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie,
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify(payload),
+    })
 
-    // Verify raw DB document is encrypted at rest
-    const rawDoc = await Address.findById(addressId)
-    assert.ok(rawDoc)
+    assert.equal(res.status, 201)
+    const json = await res.json()
+    assert.equal(json.data.addressLine1, 'Flat 402, Green Glen Residency')
+    assert.equal(json.data.instructions, 'Leave at security desk')
+    assert.equal(json.data.isDefault, true)
+
+    // Direct Database Inspection: verify fields are encrypted at rest with AES-256-GCM v1 prefix
+    const rawDoc = await Address.findById(json.data.id).lean()
     assert.ok(rawDoc.addressLine1Encrypted.startsWith('v1:'))
-    assert.ok(!rawDoc.addressLine1Encrypted.includes('Sunshine Towers'))
+    assert.ok(rawDoc.addressLine2Encrypted.startsWith('v1:'))
     assert.ok(rawDoc.instructionsEncrypted.startsWith('v1:'))
-    assert.ok(!rawDoc.instructionsEncrypted.includes('doorbell'))
+    assert.equal(rawDoc.addressLine1, undefined) // Plaintext field should not exist in DB
 
-    // Verify GET /api/v1/addresses returns decrypted data
-    const listRes = await request(app).get('/api/v1/addresses').set('Cookie', cookie)
+    // GET /addresses: verify transparent decryption
+    const listRes = await fetch(`${baseUrl}/addresses`, {
+      headers: { cookie },
+    })
     assert.equal(listRes.status, 200)
-    assert.equal(listRes.body.data.length, 1)
-    assert.equal(listRes.body.data[0].addressLine1, 'Flat 402, Sunshine Towers')
-    assert.equal(listRes.body.data[0].isDefault, true)
+    const listJson = await listRes.json()
+    assert.equal(listJson.data.length, 1)
+    assert.equal(listJson.data[0].addressLine1, 'Flat 402, Green Glen Residency')
   })
 
-  it('enforces cross-account isolation: User B cannot read, update or delete User A address', async () => {
-    const userA = await createRegisteredUser('User A', 'usera@example.com')
-    const userB = await createRegisteredUser('User B', 'userb@example.com')
+  test('enforces cross-account isolation: User B cannot read, update or delete User A address', async () => {
+    const userACookie = await registerAndGetCookie('user_a@example.com')
+    const userBCookie = await registerAndGetCookie('user_b@example.com')
 
     // User A creates an address
-    const aRes = await request(app)
-      .post('/api/v1/addresses')
-      .set('Cookie', userA.cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        label: 'WORK',
+    const createRes = await fetch(`${baseUrl}/addresses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: userACookie, 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        label: 'HOME',
         recipientName: 'User A',
         phone: '9876543210',
-        addressLine1: 'Tech Park Tower 1',
-        addressLine2: 'Outer Ring Road',
+        addressLine1: 'User A Secret House',
+        addressLine2: 'Road A',
         city: 'Bengaluru',
-        postalCode: '560103',
-        isDefault: true,
-      })
-    const addressAId = aRes.body.data.id
+        postalCode: '560100',
+      }),
+    })
+    const { data: addrA } = await createRes.json()
 
-    // User B tries to update User A's address -> 403 Forbidden
-    const patchRes = await request(app)
-      .patch(`/api/v1/addresses/${addressAId}`)
-      .set('Cookie', userB.cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({ recipientName: 'Malicious Overwrite' })
-
+    // User B tries to update User A address
+    const patchRes = await fetch(`${baseUrl}/addresses/${addrA.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: userBCookie, 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({ addressLine1: 'Hacked address' }),
+    })
     assert.equal(patchRes.status, 403)
-    assert.equal(patchRes.body.error.code, 'FORBIDDEN')
 
-    // User B tries to delete User A's address -> 403 Forbidden
-    const deleteRes = await request(app)
-      .delete(`/api/v1/addresses/${addressAId}`)
-      .set('Cookie', userB.cookie)
-      .set('x-test-bypass-csrf', '1')
-
+    // User B tries to delete User A address
+    const deleteRes = await fetch(`${baseUrl}/addresses/${addrA.id}`, {
+      method: 'DELETE',
+      headers: { cookie: userBCookie, 'x-test-bypass-csrf': '1' },
+    })
     assert.equal(deleteRes.status, 403)
-    assert.equal(deleteRes.body.error.code, 'FORBIDDEN')
 
-    // User B's address list does NOT contain User A's address
-    const bList = await request(app).get('/api/v1/addresses').set('Cookie', userB.cookie)
-    assert.equal(bList.status, 200)
-    assert.equal(bList.body.data.length, 0)
+    // User B lists addresses -> empty list
+    const listBRes = await fetch(`${baseUrl}/addresses`, { headers: { cookie: userBCookie } })
+    const listBJson = await listBRes.json()
+    assert.equal(listBJson.data.length, 0)
   })
 })

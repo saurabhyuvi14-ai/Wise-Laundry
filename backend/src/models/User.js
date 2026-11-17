@@ -57,6 +57,7 @@ const userSchema = new mongoose.Schema(
     toJSON: {
       transform(_doc, ret) {
         ret.id = ret._id.toString()
+        ret.name = ret.fullName // compatibility with legacy frontends
         delete ret._id
         delete ret.__v
         delete ret.passwordHash

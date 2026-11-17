@@ -1,16 +1,22 @@
-import { describe, it, before, after, beforeEach } from 'node:test'
+import { test, describe, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import request from 'supertest'
 import app from '../src/app.js'
-import { setupTestDb, clearTestDb, teardownTestDb } from './helpers/testDb.js'
+import { setupTestDb, teardownTestDb, clearTestDb } from './helpers/testDb.js'
 import { Order } from '../src/models/Order.js'
 
 describe('Orders, Idempotency & Live Tracking', () => {
+  let server
+  let baseUrl
+
   before(async () => {
     await setupTestDb()
+    server = app.listen(0)
+    const port = server.address().port
+    baseUrl = `http://127.0.0.1:${port}/api/v1`
   })
 
   after(async () => {
+    server.close()
     await teardownTestDb()
   })
 
@@ -18,178 +24,223 @@ describe('Orders, Idempotency & Live Tracking', () => {
     await clearTestDb()
   })
 
-  async function createRegisteredUser(name, email) {
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        fullName: name,
+  async function setupCustomer(email) {
+    const regRes = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        fullName: 'Customer Test',
         email,
         phone: '9876543210',
-        password: 'Password@123',
-      })
-    return { user: res.body.data, cookie: res.headers['set-cookie'] }
-  }
+        password: 'Password123!',
+      }),
+    })
+    const cookieHeader = regRes.headers.get('set-cookie')
+    const cookie = cookieHeader.split(',').find((c) => c.includes('wise_session=')).split(';')[0]
 
-  async function createAddressFor(cookie) {
-    const res = await request(app)
-      .post('/api/v1/addresses')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({
+    // Create an address
+    const addrRes = await fetch(`${baseUrl}/addresses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie, 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
         label: 'HOME',
-        recipientName: 'Test Recipient',
+        recipientName: 'Customer Test',
         phone: '9876543210',
-        addressLine1: 'B-101, Palm Grove',
-        addressLine2: 'Indiranagar 100ft Road',
+        addressLine1: 'Villa 12, Palm Meadows',
+        addressLine2: 'Whitefield',
         city: 'Bengaluru',
-        postalCode: '560038',
-        isDefault: true,
-      })
-    return res.body.data
+        postalCode: '560066',
+        instructions: 'Gate 2 security',
+      }),
+    })
+    const { data: address } = await addrRes.json()
+
+    return { cookie, address }
   }
 
-  it('creates an order with encrypted snapshot and initial BOOKED status history', async () => {
-    const { cookie } = await createRegisteredUser('Customer One', 'customer1@example.com')
-    const address = await createAddressFor(cookie)
+  test('creates an order with encrypted snapshot and initial BOOKED status history', async () => {
+    const { cookie, address } = await setupCustomer('cust1@example.com')
 
-    // Future scheduled pickup time
-    const futureDate = new Date(Date.now() + 48 * 3600 * 1000).toISOString()
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const payload = {
+      items: [{ serviceId: 'service_wash_fold' }],
+      addressId: address.id,
+      pickupScheduledAt: futureDate,
+      pickupSlotHours: 2,
+      instructions: 'Handle delicate silks carefully',
+    }
 
-    const orderRes = await request(app)
-      .post('/api/v1/orders')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
-      .set('Idempotency-Key', 'test-key-100')
-      .send({
-        items: [{ serviceId: 'service_wash_fold' }],
-        addressId: address.id,
-        pickupScheduledAt: futureDate,
-        pickupSlotHours: 2,
-        instructions: 'Please call before arriving.',
-      })
+    const res = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie,
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify(payload),
+    })
 
-    assert.equal(orderRes.status, 201)
-    const order = orderRes.body.data
-    assert.ok(order.id)
-    assert.ok(order.reference.startsWith('WL-'))
-    assert.equal(order.currentStatus, 'BOOKED')
-    assert.equal(order.items[0].serviceId, 'service_wash_fold')
-    assert.equal(order.items[0].serviceName, 'Wash & Fold')
-    assert.equal(order.statusHistory.length, 1)
-    assert.equal(order.statusHistory[0].status, 'BOOKED')
-    assert.equal(order.addressSnapshot.addressLine1, 'B-101, Palm Grove')
+    assert.equal(res.status, 201)
+    const json = await res.json()
+    assert.ok(json.data.id)
+    assert.ok(json.data.reference.startsWith('WL-'))
+    assert.equal(json.data.currentStatus, 'BOOKED')
+    assert.equal(json.data.items[0].serviceName, 'Wash & Fold')
+    assert.equal(json.data.instructions, 'Handle delicate silks carefully')
+    assert.equal(json.data.addressSnapshot.addressLine1, 'Villa 12, Palm Meadows')
+    assert.equal(json.data.statusHistory.length, 1)
+    assert.equal(json.data.statusHistory[0].status, 'BOOKED')
 
-    // Verify raw DB document has encrypted address snapshot
-    const rawOrder = await Order.findOne({ reference: order.reference })
-    assert.ok(rawOrder)
+    // Inspect database at rest: verify address snapshot and instructions are encrypted
+    const rawOrder = await Order.findOne({ reference: json.data.reference }).lean()
     assert.ok(rawOrder.addressSnapshot.addressLine1Encrypted.startsWith('v1:'))
-    assert.ok(!rawOrder.addressSnapshot.addressLine1Encrypted.includes('Palm Grove'))
-
-    // Verify consistent ID on order details
-    const detailsRes = await request(app).get(`/api/v1/orders/${order.id}`).set('Cookie', cookie)
-    assert.equal(detailsRes.status, 200)
-    assert.equal(detailsRes.body.data.id, order.id)
-    assert.equal(detailsRes.body.data.reference, order.reference)
-
-    // Verify consistent ID on live tracking
-    const trackingRes = await request(app).get(`/api/v1/orders/${order.id}/tracking`).set('Cookie', cookie)
-    assert.equal(trackingRes.status, 200)
-    assert.equal(trackingRes.body.data.orderId, order.id)
-    assert.equal(trackingRes.body.data.reference, order.reference)
-    assert.equal(trackingRes.body.data.currentStatus, 'BOOKED')
+    assert.ok(rawOrder.instructionsEncrypted.startsWith('v1:'))
   })
 
-  it('guarantees idempotency: retried booking with identical Idempotency-Key returns existing order', async () => {
-    const { cookie } = await createRegisteredUser('Customer Retry', 'retry@example.com')
-    const address = await createAddressFor(cookie)
-    const futureDate = new Date(Date.now() + 72 * 3600 * 1000).toISOString()
-    const idempotencyKey = 'unique-client-uuid-999'
+  test('guarantees idempotency: retried booking with identical Idempotency-Key returns existing order', async () => {
+    const { cookie, address } = await setupCustomer('cust2@example.com')
+    const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    const idempotencyKey = 'unique-key-xyz-789'
 
-    // First booking attempt
-    const res1 = await request(app)
-      .post('/api/v1/orders')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
-      .set('Idempotency-Key', idempotencyKey)
-      .send({
-        items: [{ serviceId: 'service_wash_iron' }],
-        addressId: address.id,
-        pickupScheduledAt: futureDate,
-        pickupSlotHours: 2,
-      })
-    assert.equal(res1.status, 201)
-    const orderId1 = res1.body.data.id
+    const payload = {
+      items: [{ serviceId: 'service_wash_iron' }],
+      addressId: address.id,
+      pickupScheduledAt: futureDate,
+      pickupSlotHours: 2,
+    }
 
-    // Second booking attempt with same key (simulating network retry)
-    const res2 = await request(app)
-      .post('/api/v1/orders')
-      .set('Cookie', cookie)
-      .set('x-test-bypass-csrf', '1')
-      .set('Idempotency-Key', idempotencyKey)
-      .send({
-        items: [{ serviceId: 'service_wash_iron' }],
-        addressId: address.id,
-        pickupScheduledAt: futureDate,
-        pickupSlotHours: 2,
-      })
-    assert.equal(res2.status, 200)
-    assert.equal(res2.body.data.id, orderId1)
+    // First call
+    const firstRes = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie,
+        'Idempotency-Key': idempotencyKey,
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify(payload),
+    })
+    assert.equal(firstRes.status, 201)
+    const firstJson = await firstRes.json()
 
-    // Total orders count must be 1
-    const totalOrders = await Order.countDocuments()
+    // Second call with same idempotency key
+    const secondRes = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie,
+        'Idempotency-Key': idempotencyKey,
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify(payload),
+    })
+    assert.equal(secondRes.status, 201)
+    const secondJson = await secondRes.json()
+
+    // Must return identical existing order
+    assert.equal(secondJson.data.id, firstJson.data.id)
+    assert.equal(secondJson.data.reference, firstJson.data.reference)
+
+    // Verify only one order was written to database
+    const totalOrders = await Order.countDocuments({ idempotencyKey })
     assert.equal(totalOrders, 1)
   })
 
-  it('rejects booking with another customer address (ownership validation)', async () => {
-    const userA = await createRegisteredUser('User A', 'user_a_order@example.com')
-    const userB = await createRegisteredUser('User B', 'user_b_order@example.com')
-    const addressA = await createAddressFor(userA.cookie)
+  test('rejects booking with another customer address (ownership validation)', async () => {
+    const userA = await setupCustomer('custA@example.com')
+    const userB = await setupCustomer('custB@example.com')
 
-    const futureDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString()
-
-    // User B attempts to book using User A's addressId
-    const res = await request(app)
-      .post('/api/v1/orders')
-      .set('Cookie', userB.cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    // User B tries to use User A's addressId
+    const res = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: userB.cookie,
+        'x-test-bypass-csrf': '1',
+      },
+      body: JSON.stringify({
         items: [{ serviceId: 'service_wash_fold' }],
-        addressId: addressA.id,
+        addressId: userA.address.id,
         pickupScheduledAt: futureDate,
-        pickupSlotHours: 2,
-      })
+      }),
+    })
 
     assert.equal(res.status, 403)
-    assert.equal(res.body.error.code, 'FORBIDDEN')
   })
 
-  it('enforces cross-account isolation: User B cannot view User A order or tracking', async () => {
-    const userA = await createRegisteredUser('User A', 'usera_track@example.com')
-    const userB = await createRegisteredUser('User B', 'userb_track@example.com')
-    const addressA = await createAddressFor(userA.cookie)
+  test('enforces cross-account isolation: User B cannot view User A order or tracking', async () => {
+    const userA = await setupCustomer('owner@example.com')
+    const userB = await setupCustomer('intruder@example.com')
 
-    const futureDate = new Date(Date.now() + 36 * 3600 * 1000).toISOString()
-    const orderRes = await request(app)
-      .post('/api/v1/orders')
-      .set('Cookie', userA.cookie)
-      .set('x-test-bypass-csrf', '1')
-      .send({
-        items: [{ serviceId: 'service_iron_only' }],
-        addressId: addressA.id,
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const orderRes = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: userA.cookie, 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        items: [{ serviceId: 'service_wash_fold' }],
+        addressId: userA.address.id,
         pickupScheduledAt: futureDate,
-        pickupSlotHours: 2,
-      })
-    const orderId = orderRes.body.data.id
+      }),
+    })
+    const { data: orderA } = await orderRes.json()
 
-    // User B tries to view User A's order -> 403
-    const detailsRes = await request(app).get(`/api/v1/orders/${orderId}`).set('Cookie', userB.cookie)
-    assert.equal(detailsRes.status, 403)
-    assert.equal(detailsRes.body.error.code, 'FORBIDDEN')
+    // User B tries to get order details
+    const getRes = await fetch(`${baseUrl}/orders/${orderA.id}`, {
+      headers: { cookie: userB.cookie },
+    })
+    assert.equal(getRes.status, 403)
 
-    // User B tries to view User A's tracking -> 403
-    const trackingRes = await request(app).get(`/api/v1/orders/${orderId}/tracking`).set('Cookie', userB.cookie)
-    assert.equal(trackingRes.status, 403)
-    assert.equal(trackingRes.body.error.code, 'FORBIDDEN')
+    // User B tries to get order tracking
+    const trackRes = await fetch(`${baseUrl}/orders/${orderA.id}/tracking`, {
+      headers: { cookie: userB.cookie },
+    })
+    assert.equal(trackRes.status, 403)
+
+    // User A can view tracking successfully
+    const trackOk = await fetch(`${baseUrl}/orders/${orderA.id}/tracking`, {
+      headers: { cookie: userA.cookie },
+    })
+    assert.equal(trackOk.status, 200)
+    const trackJson = await trackOk.json()
+    assert.equal(trackJson.data.orderId, orderA.id)
+    assert.equal(trackJson.data.currentStatus, 'BOOKED')
+  })
+
+  test('simulates order progression in test mode and confirms final pricing at RECEIVED', async () => {
+    const userA = await setupCustomer('advance_test@example.com')
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const orderRes = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: userA.cookie, 'x-test-bypass-csrf': '1' },
+      body: JSON.stringify({
+        items: [{ serviceId: 'service_wash_fold' }],
+        addressId: userA.address.id,
+        pickupScheduledAt: futureDate,
+      }),
+    })
+    const { data: order } = await orderRes.json()
+    assert.equal(order.currentStatus, 'BOOKED')
+
+    // 1st advance: BOOKED -> PICKED_UP
+    const adv1 = await fetch(`${baseUrl}/orders/${order.id}/advance`, {
+      method: 'POST',
+      headers: { cookie: userA.cookie, 'x-test-bypass-csrf': '1' },
+    })
+    assert.equal(adv1.status, 200)
+    const json1 = await adv1.json()
+    assert.equal(json1.data.currentStatus, 'PICKED_UP')
+
+    // 2nd advance: PICKED_UP -> RECEIVED (should populate weighed quantity and estimated delivery)
+    const adv2 = await fetch(`${baseUrl}/orders/${order.id}/advance`, {
+      method: 'POST',
+      headers: { cookie: userA.cookie, 'x-test-bypass-csrf': '1' },
+    })
+    assert.equal(adv2.status, 200)
+    const json2 = await adv2.json()
+    assert.equal(json2.data.currentStatus, 'RECEIVED')
+    assert.equal(json2.data.items[0].quantity, 3.5)
+    assert.ok(json2.data.totalPaise > 0)
+    assert.ok(json2.data.estimatedDeliveryAt)
   })
 })

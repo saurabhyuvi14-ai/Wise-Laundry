@@ -3,8 +3,8 @@ import { config } from '../config/env.js'
 import { ApiError } from '../utils/errors.js'
 
 export const apiLimiter = rateLimit({
-  windowMs: config.RATE_LIMIT_WINDOW_MS,
-  max: config.NODE_ENV === 'test' ? 1000 : config.RATE_LIMIT_MAX_REQUESTS,
+  windowMs: config?.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000,
+  max: config?.NODE_ENV === 'test' ? 1000 : (config?.RATE_LIMIT_MAX_REQUESTS || 100),
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, _res, next) => {
@@ -13,8 +13,8 @@ export const apiLimiter = rateLimit({
 })
 
 export const authLimiter = rateLimit({
-  windowMs: config.RATE_LIMIT_WINDOW_MS,
-  max: config.NODE_ENV === 'test' ? 1000 : config.AUTH_RATE_LIMIT_MAX_REQUESTS,
+  windowMs: config?.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000,
+  max: config?.NODE_ENV === 'test' ? 1000 : (config?.AUTH_RATE_LIMIT_MAX_REQUESTS || 20),
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, _res, next) => {

@@ -1,18 +1,26 @@
 import { z } from 'zod'
 import { ApiError } from './errors.js'
 
-// Strict phone regex: 10 digits
 const phoneRegex = /^[6-9]\d{9}$/
-// Indian postal code regex: 6 digits
-const pincodeRegex = /^\d{6}$/
+const postalCodeRegex = /^\d{6}$/
 
-export const registerSchema = z.object({
-  fullName: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
-  email: z.string().trim().email('Enter a valid email address').toLowerCase(),
-  phone: z.string().trim().regex(phoneRegex, 'Enter a valid 10-digit mobile number'),
-  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
-  role: z.undefined(), // prevent role injection at registration
-})
+export const registerSchema = z
+  .object({
+    fullName: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
+    name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
+    email: z.string().trim().email('Enter a valid email address').toLowerCase(),
+    phone: z.string().trim().regex(phoneRegex, 'Enter a valid 10-digit mobile number'),
+    password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+    role: z.undefined({ invalid_type_error: 'Role assignment is not allowed at registration' }),
+  })
+  .transform((data) => ({
+    ...data,
+    fullName: data.fullName || data.name || '',
+  }))
+  .refine((data) => Boolean(data.fullName), {
+    message: 'Enter your full name.',
+    path: ['fullName'],
+  })
 
 export const loginSchema = z.object({
   email: z.string().trim().email('Enter a valid email address').toLowerCase(),
@@ -21,9 +29,13 @@ export const loginSchema = z.object({
 
 export const updateMeSchema = z.object({
   fullName: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
   phone: z.string().trim().regex(phoneRegex, 'Enter a valid 10-digit mobile number').optional(),
-  role: z.undefined(), // prevent privilege escalation
-})
+  role: z.undefined({ invalid_type_error: 'Role cannot be changed' }),
+}).transform((data) => ({
+  ...data,
+  fullName: data.fullName || data.name,
+}))
 
 export const addressSchema = z.object({
   label: z.enum(['HOME', 'WORK', 'OTHER']).default('HOME'),
@@ -33,12 +45,34 @@ export const addressSchema = z.object({
   addressLine2: z.string().trim().min(2, 'Street/area is required').max(200),
   landmark: z.string().trim().max(150).optional().default(''),
   city: z.string().trim().min(2, 'City is required').max(100).default('Bengaluru'),
-  postalCode: z.string().trim().regex(pincodeRegex, 'Pincode must be 6 digits'),
+  postalCode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
+  pincode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
   instructions: z.string().trim().max(300).optional().default(''),
   isDefault: z.boolean().optional().default(false),
+}).transform((data) => ({
+  ...data,
+  postalCode: data.postalCode || data.pincode || '',
+})).refine((data) => Boolean(data.postalCode), {
+  message: 'Pincode must be 6 digits',
+  path: ['postalCode'],
 })
 
-export const updateAddressSchema = addressSchema.partial()
+export const updateAddressSchema = z.object({
+  label: z.enum(['HOME', 'WORK', 'OTHER']).optional(),
+  recipientName: z.string().trim().min(2, 'Contact name is required').max(100).optional(),
+  phone: z.string().trim().regex(phoneRegex, 'Enter a valid 10-digit mobile number').optional(),
+  addressLine1: z.string().trim().min(3, 'Address line 1 is required').max(200).optional(),
+  addressLine2: z.string().trim().min(2, 'Street/area is required').max(200).optional(),
+  landmark: z.string().trim().max(150).optional(),
+  city: z.string().trim().min(2, 'City is required').max(100).optional(),
+  postalCode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
+  pincode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
+  instructions: z.string().trim().max(300).optional(),
+  isDefault: z.boolean().optional(),
+}).transform((data) => ({
+  ...data,
+  postalCode: data.postalCode || data.pincode,
+}))
 
 export const createOrderSchema = z.object({
   items: z

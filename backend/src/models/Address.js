@@ -25,7 +25,6 @@ const addressSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    // Encrypted fields at rest
     addressLine1Encrypted: {
       type: String,
       required: true,
@@ -67,6 +66,7 @@ const addressSchema = new mongoose.Schema(
         ret.addressLine1 = decrypt(ret.addressLine1Encrypted)
         ret.addressLine2 = decrypt(ret.addressLine2Encrypted)
         ret.instructions = decrypt(ret.instructionsEncrypted)
+        ret.pincode = ret.postalCode // compatibility alias
         delete ret._id
         delete ret.__v
         delete ret.userId
@@ -79,7 +79,6 @@ const addressSchema = new mongoose.Schema(
   },
 )
 
-// Helper methods to set unencrypted inputs into encrypted storage
 addressSchema.methods.setSensitiveData = function ({ addressLine1, addressLine2, instructions }) {
   if (addressLine1 !== undefined) this.addressLine1Encrypted = encrypt(addressLine1)
   if (addressLine2 !== undefined) this.addressLine2Encrypted = encrypt(addressLine2)
@@ -96,6 +95,7 @@ addressSchema.methods.getDecryptedSnapshot = function () {
     landmark: this.landmark,
     city: this.city,
     postalCode: this.postalCode,
+    pincode: this.postalCode,
     instructions: decrypt(this.instructionsEncrypted),
   }
 }

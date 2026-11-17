@@ -10,28 +10,27 @@ export function csrfProtection(req, res, next) {
   if (!csrfToken) {
     csrfToken = generateSecureToken(16)
     res.cookie('wise_csrf_token', csrfToken, {
-      httpOnly: false, // client JS must be able to read this cookie to send in X-CSRF-Token header
-      secure: config.NODE_ENV === 'production',
-      sameSite: config.NODE_ENV === 'production' ? 'strict' : 'lax',
+      httpOnly: false,
+      secure: config?.NODE_ENV === 'production',
+      sameSite: config?.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     })
   }
 
-  // Safe HTTP methods (GET, HEAD, OPTIONS) do not require CSRF origin validation
+  // Safe HTTP methods do not require origin check
   if (!MUTATIVE_METHODS.has(req.method.toUpperCase())) {
     return next()
   }
 
   // In test mode, allow tests unless explicitly testing CSRF rejection
-  if (config.NODE_ENV === 'test' && req.headers['x-test-bypass-csrf']) {
+  if (config?.NODE_ENV === 'test' && req.headers['x-test-bypass-csrf']) {
     return next()
   }
 
   // 2. Validate Origin / Referer header
   const origin = req.headers.origin || (req.headers.referer ? extractOrigin(req.headers.referer) : null)
 
-  // In production / non-test, mutative requests with an origin must be verified
   if (origin) {
     const isOriginAllowed = allowedOriginsList.some(
       (allowed) => allowed === origin || allowed === '*' || origin.startsWith(allowed),

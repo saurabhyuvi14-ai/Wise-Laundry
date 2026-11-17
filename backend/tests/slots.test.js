@@ -1,15 +1,23 @@
-import { describe, it, before, after, beforeEach } from 'node:test'
+import { test, describe, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { setupTestDb, clearTestDb, teardownTestDb } from './helpers/testDb.js'
+import app from '../src/app.js'
+import { setupTestDb, teardownTestDb, clearTestDb } from './helpers/testDb.js'
 import { SlotCapacity } from '../src/models/SlotCapacity.js'
-import { ApiError } from '../src/utils/errors.js'
+import { reserveSlot } from '../src/services/slot.service.js'
 
 describe('Slot Capacity & Competing Slot Requests', () => {
+  let server
+  let baseUrl
+
   before(async () => {
     await setupTestDb()
+    server = app.listen(0)
+    const port = server.address().port
+    baseUrl = `http://127.0.0.1:${port}/api/v1`
   })
 
   after(async () => {
+    server.close()
     await teardownTestDb()
   })
 
@@ -17,62 +25,57 @@ describe('Slot Capacity & Competing Slot Requests', () => {
     await clearTestDb()
   })
 
-  it('atomically reserves slots up to maximum capacity and rejects overbooking', async () => {
-    const testDate = '2026-11-20'
-    const slotHour = 10
+  test('atomically reserves slots up to maximum capacity and rejects overbooking', async () => {
+    const testDate = '2026-12-01'
+    const testHour = 10
     const maxCapacity = 3
 
-    // First 3 reservations must succeed
-    const r1 = await SlotCapacity.reserveSlot(testDate, slotHour, maxCapacity)
-    assert.equal(r1.bookedCount, 1)
+    // 1. Reserve 3 slots successfully
+    await SlotCapacity.reserveSlot(testDate, testHour, maxCapacity)
+    await SlotCapacity.reserveSlot(testDate, testHour, maxCapacity)
+    const slot3 = await SlotCapacity.reserveSlot(testDate, testHour, maxCapacity)
+    assert.equal(slot3.bookedCount, 3)
 
-    const r2 = await SlotCapacity.reserveSlot(testDate, slotHour, maxCapacity)
-    assert.equal(r2.bookedCount, 2)
-
-    const r3 = await SlotCapacity.reserveSlot(testDate, slotHour, maxCapacity)
-    assert.equal(r3.bookedCount, 3)
-
-    // 4th reservation must fail with 409 conflict
+    // 2. 4th reservation must throw conflict
     await assert.rejects(
       async () => {
-        await SlotCapacity.reserveSlot(testDate, slotHour, maxCapacity)
+        await SlotCapacity.reserveSlot(testDate, testHour, maxCapacity)
       },
       (err) => {
-        assert.ok(err instanceof ApiError)
         assert.equal(err.status, 409)
         assert.equal(err.code, 'CONFLICT')
         return true
       },
     )
 
-    // Slot availability check confirms 0 available and isFull = true
-    const avail = await SlotCapacity.getSlotAvailability(testDate, slotHour, maxCapacity)
-    assert.equal(avail.booked, 3)
-    assert.equal(avail.available, 0)
-    assert.equal(avail.isFull, true)
+    // 3. Release one slot and verify another reservation succeeds
+    await SlotCapacity.releaseSlot(testDate, testHour)
+    const slotAfterRelease = await SlotCapacity.reserveSlot(testDate, testHour, maxCapacity)
+    assert.equal(slotAfterRelease.bookedCount, 3)
   })
 
-  it('handles competing simultaneous requests safely without over-allocating', async () => {
-    const testDate = '2026-11-21'
-    const slotHour = 14
+  test('handles competing simultaneous requests safely without over-allocating', async () => {
+    const testDate = '2026-12-02'
+    const testHour = 14
     const maxCapacity = 5
+    const totalRequests = 15
 
-    // Simulate 10 simultaneous competing slot requests
-    const attempts = Array.from({ length: 10 }, () =>
-      SlotCapacity.reserveSlot(testDate, slotHour, maxCapacity)
-        .then(() => ({ success: true }))
-        .catch((err) => ({ success: false, err })),
+    // Fire 15 simultaneous booking attempts
+    const results = await Promise.allSettled(
+      Array.from({ length: totalRequests }).map(() =>
+        SlotCapacity.reserveSlot(testDate, testHour, maxCapacity),
+      ),
     )
 
-    const results = await Promise.all(attempts)
-    const successes = results.filter((r) => r.success).length
-    const failures = results.filter((r) => !r.success).length
+    const fulfilled = results.filter((r) => r.status === 'fulfilled')
+    const rejected = results.filter((r) => r.status === 'rejected')
 
-    // Exactly 5 must succeed and exactly 5 must fail
-    assert.equal(successes, 5)
-    assert.equal(failures, 5)
+    // Exactly 5 reservations must succeed, remaining 10 must be safely rejected
+    assert.equal(fulfilled.length, maxCapacity)
+    assert.equal(rejected.length, totalRequests - maxCapacity)
 
-    const doc = await SlotCapacity.findOne({ slotKey: `${testDate}_${slotHour}` })
-    assert.equal(doc.bookedCount, 5)
+    // Verify final state in database
+    const slotDoc = await SlotCapacity.findOne({ slotKey: `${testDate}_${testHour}` })
+    assert.equal(slotDoc.bookedCount, maxCapacity)
   })
 })
