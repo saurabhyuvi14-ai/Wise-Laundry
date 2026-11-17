@@ -11,6 +11,14 @@ import { isActive } from '../features/orders/components/OrderStatusBadge'
 const STORE_KEY = 'wise-laundry-demo-v1'
 const SESSION_KEY = 'wise-laundry-demo-session'
 
+// Demo OTP: no SMS is sent. The code is always DEMO_OTP and is shown on the login screen.
+export const DEMO_OTP = '123456'
+const OTP_TTL_MS = 5 * 60 * 1000
+const OTP_RESEND_MS = 30 * 1000
+const OTP_MAX_ATTEMPTS = 5
+const otpRequests = new Map() // phone -> { expiresAt, resendAvailableAt, attempts }
+const tenDigits = (v) => String(v ?? '').replace(/\D/g, '').slice(-10)
+
 const wait = (ms = 300 + Math.random() * 250) => new Promise((r) => setTimeout(r, ms))
 const clone = (v) => structuredClone(v)
 
@@ -72,6 +80,48 @@ export const demoApi = {
     save()
     try { sessionStorage.setItem(SESSION_KEY, '1') } catch { /* ignore */ }
     return { data: clone(db.user) }
+  },
+  async requestOtp({ phone }) {
+    await wait()
+    const p = tenDigits(phone)
+    if (!/^[6-9]\d{9}$/.test(p)) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Enter a valid 10-digit mobile number.', { phone: 'Enter a valid 10-digit mobile number.' })
+    }
+    const now = Date.now()
+    const prev = otpRequests.get(p)
+    if (prev && now < prev.resendAvailableAt) {
+      const secs = Math.ceil((prev.resendAvailableAt - now) / 1000)
+      throw new ApiError(429, 'OTP_TOO_SOON', `Please wait ${secs}s before asking for a new code.`)
+    }
+    const req = { expiresAt: now + OTP_TTL_MS, resendAvailableAt: now + OTP_RESEND_MS, attempts: 0 }
+    otpRequests.set(p, req)
+    return { data: { phone: p, expiresAt: new Date(req.expiresAt).toISOString(), resendAvailableAt: new Date(req.resendAvailableAt).toISOString() } }
+  },
+  async verifyOtp({ phone, code }) {
+    await wait()
+    const p = tenDigits(phone)
+    const req = otpRequests.get(p)
+    if (!req || Date.now() > req.expiresAt) {
+      otpRequests.delete(p)
+      throw new ApiError(400, 'OTP_EXPIRED', 'This code has expired. Ask for a new one.', { code: 'This code has expired.' })
+    }
+    if (req.attempts >= OTP_MAX_ATTEMPTS) {
+      throw new ApiError(429, 'OTP_TOO_MANY_ATTEMPTS', 'Too many wrong tries. Ask for a new code.', { code: 'Too many wrong tries.' })
+    }
+    if (String(code) !== DEMO_OTP) {
+      req.attempts += 1
+      const left = OTP_MAX_ATTEMPTS - req.attempts
+      throw new ApiError(400, 'INVALID_OTP', left ? `Wrong code. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong tries. Ask for a new code.', { code: 'Wrong code.' })
+    }
+    otpRequests.delete(p)
+    // The demo has one account. A new number signs up as a new customer with no name yet.
+    const isNewUser = p !== tenDigits(db.user.phone)
+    if (isNewUser) {
+      db.user = { ...db.user, fullName: '', phone: p }
+      save()
+    }
+    try { sessionStorage.setItem(SESSION_KEY, '1') } catch { /* ignore */ }
+    return { data: { user: clone(db.user), isNewUser } }
   },
   async logout() {
     await wait(150)

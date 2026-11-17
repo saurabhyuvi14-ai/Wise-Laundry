@@ -29,6 +29,23 @@ export function AuthProvider({ children }) {
     return res.data
   }, [])
 
+  // OTP login. A new number is signed in but has no name yet, so the user is only
+  // set once completeProfile() saves it (setting it earlier would leave the login page).
+  const requestOtp = useCallback((phone) => api.requestOtp({ phone }), [])
+
+  const verifyOtp = useCallback(async (phone, code) => {
+    const res = await api.verifyOtp({ phone, code })
+    setLoggedOut(false)
+    if (!res.data.isNewUser) setUser(res.data.user)
+    return res.data
+  }, [])
+
+  const completeProfile = useCallback(async (details) => {
+    const res = await api.updateMe(details)
+    setUser(res.data)
+    return res.data
+  }, [])
+
   const logout = useCallback(async () => {
     await api.logout()
     try {
@@ -41,8 +58,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, status, loggedOut, login, register, logout, setUser }),
-    [user, status, loggedOut, login, register, logout],
+    () => ({ user, status, loggedOut, login, register, requestOtp, verifyOtp, completeProfile, logout, setUser }),
+    [user, status, loggedOut, login, register, requestOtp, verifyOtp, completeProfile, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

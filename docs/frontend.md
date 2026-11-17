@@ -5,6 +5,33 @@
 
 ---
 
+## 18 Nov 2026 — OTP login built, switched off for now
+
+**Branch:** `feature/otp-login`
+
+> **Status: switched off.** The login screen shows email and password only. The OTP screens are in the code but commented out in `LoginForm.jsx` until the backend has the OTP endpoints below. To turn it on, remove the comments marked `OTP` in that file.
+
+### What is built
+- Mobile number (+91, 10 digits) and a **Send OTP** button.
+- Six boxes for the code. Typing moves to the next box, Backspace goes back, and pasting or SMS autofill fills all six. The code is checked as soon as the sixth digit is in.
+- **Resend code** unlocks after 30 seconds. **Change number** goes back with the number still filled in.
+- A wrong code clears the boxes and shows how many tries are left (5 in total). After that, a new code is needed.
+- A **new number** gets one more screen, "Tell us your name", then goes into the app.
+- Email and password stays as a second option.
+
+### Demo
+- No SMS is sent. The code is always **123456**, and the screen says so.
+- 98765 43210 is the demo customer. Any other number signs up as a new customer.
+
+### For the backend
+- The frontend calls two new endpoints:
+  - `POST /auth/otp/request` with `{ phone }`, returns `{ data: { phone, expiresAt, resendAvailableAt } }`
+  - `POST /auth/otp/verify` with `{ phone, code }`, returns `{ data: { user, isNewUser } }` and sets the login cookie
+- Error codes it expects: `INVALID_OTP`, `OTP_EXPIRED`, `OTP_TOO_MANY_ATTEMPTS`, `OTP_TOO_SOON`.
+- A new customer's name is saved with the existing `PATCH /users/me`.
+
+---
+
 ## 4 Nov 2026 — Phone layout, new menu, horizontal tracking
 
 **Branch:** `feature/mobile-nav-tracking`
