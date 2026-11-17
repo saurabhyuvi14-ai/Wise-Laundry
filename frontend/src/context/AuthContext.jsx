@@ -31,7 +31,11 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     await api.logout()
-    try { sessionStorage.removeItem('wise-laundry-booking-draft') } catch { /* ignore */ }
+    try {
+      sessionStorage.removeItem('wise-laundry-booking-draft')
+      sessionStorage.removeItem('wise-laundry-demo-session')
+      sessionStorage.clear()
+    } catch { /* ignore */ }
     setLoggedOut(true)
     setUser(null)
   }, [])
