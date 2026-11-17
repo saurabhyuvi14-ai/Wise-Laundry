@@ -2,27 +2,77 @@
 
 Wise Laundry is a modern doorstep laundry and dry cleaning management platform designed to deliver convenient on-demand laundry services, transparent pricing, real-time order tracking, and seamless customer account management.
 
-## Project Status
+---
 
-This repository is currently in its initial scaffolding phase for collaborative setup. It contains the project folder structure, empty placeholder files, and installed frontend dependencies only.
+## Architecture Overview
 
-> **Note:** The application is not yet runnable until frontend configuration (Vite, Tailwind, ESLint) and component implementations are added.
+- **Frontend (`frontend/`)**: React 19, Vite, Tailwind CSS v4, Lucide icons, React Router v7. Includes public pages, booking wizard, address management, and live order tracking.
+- **Backend (`backend/`)**: Node.js (ESM), Express, Mongoose, and **MongoDB Atlas**.
+  - **Security**: Argon2id password hashing, revocable server-side sessions via `HttpOnly` cookies, CSRF protection, rate limiting, and AES-256-GCM managed field encryption for addresses and instructions.
+  - **Layers**: Clean separation across routes, controllers, domain services, Mongoose models, and middleware.
+  - **Capacity & Idempotency**: Atomic slot reservation guards and `Idempotency-Key` headers for safe booking retries.
+- **Documentation (`docs/`)**:
+  - [`docs/backend.md`](docs/backend.md): API contracts, security architecture, staff portal design, and Razorpay payment flow.
+  - [`docs/database.md`](docs/database.md): Mongoose schemas, indexes, field-level encryption, and database separation.
+  - [`docs/frontend.md`](docs/frontend.md): UI routes, design system, and client-side state.
 
-## Installation
+---
 
-To install frontend dependencies in a fresh clone:
+## Getting Started
 
-```bash
-cd frontend
-npm ci
-```
+### Prerequisites
 
-## Frontend Work Phases
+- Node.js `v20.x` or `v22.x` LTS
+- npm `v10.x` or `v11.x`
+- A MongoDB Atlas cluster connection string (`mongodb+srv://...`)
 
-1. **Phase 1:** Configure Vite, React, Tailwind and routing; build shared UI and navigation.
-2. **Phase 2:** Build the public home and services pages.
-3. **Phase 3:** Build customer dashboard and booking screens.
-4. **Phase 4:** Build orders, order details and Live Tracking screens.
-5. **Phase 5:** Build login, registration, address and profile screens.
-6. **Phase 6:** Check responsiveness, accessibility and prepare for backend integration.
+---
 
+### Backend Setup
+
+1. Switch to the `backend` directory and install dependencies:
+   ```bash
+   cd backend
+   npm install
+   ```
+
+2. Configure your environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and set `MONGODB_URI` to your MongoDB Atlas cluster connection string.
+
+3. Start the backend development server:
+   ```bash
+   npm run dev
+   ```
+   The API will listen on `http://localhost:4000`.
+
+4. Run the automated backend test suite:
+   ```bash
+   npm test
+   ```
+   *(All 18 tests run against an isolated in-memory test database with zero side-effects on your Atlas cluster).*
+
+---
+
+### Frontend Setup
+
+1. In a separate terminal, switch to the `frontend` directory:
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. Configure frontend environment:
+   ```bash
+   cp .env.example .env
+   ```
+   - Set `VITE_USE_DEMO=false` to connect to the live Express API.
+   - Set `VITE_USE_DEMO=true` to use client-side demo fixtures.
+
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+   Open `http://localhost:5173` in your browser. Local requests to `/api` are automatically proxied to `http://localhost:4000`.

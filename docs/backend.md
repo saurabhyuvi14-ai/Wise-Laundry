@@ -1,35 +1,37 @@
-# Wise Laundry — Backend Architecture & API Specification (Phase 1)
+# Wise Laundry — Backend Architecture & API Specification
 
-> **Branch:** `feature/phase-1-backend-customer-flow`  
-> **Status:** Phase 1 Customer Flow Implemented & Verified with 17 Automated Tests  
-> **Stack:** Node.js, Express, JavaScript (ESM), Mongoose, MongoDB, Argon2id, Zod, AES-256-GCM
+> **Branch:** `feature/backend-atlas-rebuild`  
+> **Status:** Rebuilt from scratch with Controller-Service-Model architecture, strict MongoDB Atlas connectivity, isolated test database, and 18 Automated Tests passing  
+> **Stack:** Node.js (ESM), Express, Mongoose, MongoDB Atlas, Argon2id, Zod, AES-256-GCM, Pino
 
 ---
 
 ## 1. System & Integration Architecture
 
-The integration architecture follows a decoupled, secure client-server design:
+The integration architecture follows a decoupled, secure client-server design with clean layer boundaries:
 
 ```
 [ Customer (Android / iOS / Desktop) ]
                 │
                 ▼
-   [ React (Vite + Tailwind) ]
+    [ React (Vite + Tailwind) ]
                 │
      HTTPS /api/v1 (JSON, HttpOnly Session Cookie, CSRF Token)
      (Local: Vite Proxy :5173/api -> :4000/api; Staging/Prod: Same-Origin)
                 │
                 ▼
-   [ Node.js + Express API (:4000) ]
-        ├── Security & Input Validation (Helmet, Rate Limiter, CSRF, Zod)
-        ├── Revocable Sessions & Auth (Argon2id, HttpOnly Cookies)
-        ├── Managed Field Encryption (AES-256-GCM for addresses & notes)
-        └── Atomic Slot Concurrency Control (SlotCapacity)
+    [ Node.js + Express API (:4000) ]
+        ├── Security & Middleware (Helmet, CORS, Rate Limiter, CSRF, Cache-Control)
+        ├── Routes Layer (/routes: auth, users, addresses, catalog, slots, orders, health)
+        ├── Controllers Layer (/controllers: HTTP response shaping, status codes)
+        ├── Domain Services Layer (/services: booking, slot capacity, tracking, auth, crypto)
+        ├── Models Layer (/models: User, Session, Address, Service, SlotCapacity, Order)
+        └── Utilities (/utils: AES-256-GCM crypto, Zod validation, ApiError, seed helpers)
                 │
          Mongoose over TLS
                 │
                 ▼
-   [ MongoDB (Users, Sessions, Addresses, Services, Orders, Slots) ]
+    [ MongoDB Atlas Cluster (users, sessions, addresses, services, orders, slotcapacities) ]
 ```
 
 ---
@@ -37,11 +39,11 @@ The integration architecture follows a decoupled, secure client-server design:
 ## 2. Existing Demo Store Analysis & Migration Strategy
 
 ### Existing Demo Store (`frontend/src/demo/`)
-- In earlier frontend prototyping, all interactions were held in browser memory and `localStorage` via `demo-api.js`, seeded with mock accounts (`demoUser`), pre-baked addresses (`demoAddresses`), fixed mock orders (`orders.js`), and static service pricing (`services.js`).
-- Data structures lacked password security, server validation, encryption, atomic capacity locks, and true multi-tenant privacy.
+- During earlier prototyping, all interactions were held in browser memory and `localStorage` via `demo-api.js`, seeded with mock accounts (`demoUser`), pre-baked addresses (`demoAddresses`), fixed mock orders (`orders.js`), and static service pricing (`services.js`).
+- Data structures lacked password security, server validation, encryption, atomic capacity locks, and multi-tenant privacy.
 
 ### Migration Strategy
-- Abstracted all frontend network communication behind a single client: [`frontend/src/services/api-client.js`](file:///Users/saurabhkumar/Desktop/Wise-Laundry/frontend/src/services/api-client.js).
+- Abstracted all frontend network communication behind a single shared client: [`frontend/src/services/api-client.js`](file:///Users/saurabhkumar/Desktop/Wise-Laundry/frontend/src/services/api-client.js).
 - Maintained identical method signatures and response shapes (`{ data, meta, error: { code, message, fields } }`) between `demoApi` and `laundryApi`.
 - A single environment toggle `VITE_USE_DEMO=false` flips the frontend from demo fixtures to the real Express backend without touching any UI component code.
 - On logout, client storage (`sessionStorage`, booking draft) is cleared completely.
@@ -63,6 +65,7 @@ The integration architecture follows a decoupled, secure client-server design:
     "password": "SecurePassword123"
   }
   ```
+  *(Accepts both `fullName` and `name` for backwards compatibility; strictly rejects `role` injection).*
 - **Response (201 Created):**
   - Sets `wise_session` HttpOnly cookie.
   - Sets `wise_csrf_token` cookie.
@@ -71,11 +74,12 @@ The integration architecture follows a decoupled, secure client-server design:
     "data": {
       "id": "6735a123...",
       "fullName": "Aarav Mehta",
+      "name": "Aarav Mehta",
       "email": "aarav@example.com",
       "phone": "9876543210",
       "role": "CUSTOMER",
       "isEmailVerified": false,
-      "createdAt": "2026-11-14T00:00:00.000Z"
+      "createdAt": "2026-11-17T00:00:00.000Z"
     }
   }
   ```
@@ -91,7 +95,7 @@ The integration architecture follows a decoupled, secure client-server design:
   ```
 - **Response (200 OK):**
   - Sets `wise_session` HttpOnly cookie.
-  - Returns user profile in `data`.
+  - Returns authenticated user profile in `data`.
 
 #### `POST /api/v1/auth/logout`
 - **Description:** Revokes the session in MongoDB and clears the session cookie.
@@ -118,7 +122,7 @@ The integration architecture follows a decoupled, secure client-server design:
 
 #### `POST /api/v1/auth/forgot-password`
 - **Request Body:** `{ "email": "aarav@example.com" }`
-- **Response (200 OK):** `{ "data": { "message": "If an account exists with this email, password reset instructions have been sent." } }`
+- **Response (200 OK):** Generic message preventing account enumeration.
 
 #### `POST /api/v1/auth/reset-password`
 - **Request Body:** `{ "token": "...", "newPassword": "NewPassword123" }`
@@ -148,7 +152,7 @@ The integration architecture follows a decoupled, secure client-server design:
     "isDefault": true
   }
   ```
-- **Response (201 Created):** Address stored with AES-256-GCM encryption at rest; returns decrypted object with `id`.
+- **Response (201 Created):** Stored with AES-256-GCM encryption at rest; returns decrypted object with `id` and `pincode` alias.
 
 #### `PATCH /api/v1/addresses/:id`
 - **Description:** Updates address fields. Strictly enforces server-side ownership (`403 Forbidden` if accessed by another user).
@@ -160,7 +164,7 @@ The integration architecture follows a decoupled, secure client-server design:
 
 ### Services Catalogue & Slot Availability Endpoints
 
-#### `GET /api/v1/services`
+#### `GET /api/v1/services` (also aliased at `/api/v1/catalog`)
 - **Description:** Returns active laundry services catalogue (`Wash & Fold`, `Wash & Iron`, `Iron Only`) with pricing units (`KG` / `PIECE`), unit prices in paise, turnaround hours, and lifecycle stages.
 
 #### `GET /api/v1/slots?date=YYYY-MM-DD`
@@ -177,13 +181,13 @@ The integration architecture follows a decoupled, secure client-server design:
   {
     "items": [{ "serviceId": "service_wash_fold" }],
     "addressId": "6735a456...",
-    "pickupScheduledAt": "2026-11-16T08:00:00.000Z",
+    "pickupScheduledAt": "2026-11-20T08:00:00.000Z",
     "pickupSlotHours": 2,
     "instructions": "Leave laundry bag with security."
   }
   ```
 - **Processing:**
-  1. **Idempotency Check:** If an order exists with the same `idempotencyKey` and `userId`, returns the existing order (`200 OK`) without re-creating.
+  1. **Idempotency Check:** If an order exists with the same `idempotencyKey` and `userId`, returns existing order (`200 OK`) without re-creating.
   2. **Ownership Check:** Validates that `addressId` belongs to `req.user._id`.
   3. **Service Validation:** Validates `serviceId` is active.
   4. **Atomic Slot Reservation:** Atomically increments `bookedCount` under `maxCapacity` in `SlotCapacity`. Rejects overbooking with `409 Conflict`.
@@ -197,7 +201,7 @@ The integration architecture follows a decoupled, secure client-server design:
       "reference": "WL-1001",
       "items": [{ "serviceId": "service_wash_fold", "serviceName": "Wash & Fold", "pricingUnit": "KG", "quantity": null, "unitPricePaise": 6000 }],
       "addressSnapshot": { ... },
-      "pickupScheduledAt": "2026-11-16T08:00:00.000Z",
+      "pickupScheduledAt": "2026-11-20T08:00:00.000Z",
       "pickupSlotHours": 2,
       "instructions": "Leave laundry bag with security.",
       "estimatedDeliveryAt": null,
@@ -219,8 +223,12 @@ The integration architecture follows a decoupled, secure client-server design:
 #### `GET /api/v1/orders/:id/tracking`
 - **Description:** Returns live tracking timeline and milestone progress.
 
+#### `POST /api/v1/orders/:id/advance`
+- **Environment Restriction:** **Only available in `development` and `test` environments**. Rejects with `403 Forbidden` if called in `production`.
+- **Description:** Simulates advancing an order through its service stages (`BOOKED` -> `PICKED_UP` -> `RECEIVED` -> `WASHING` -> `OUT_FOR_DELIVERY` -> `DELIVERED`). On reaching `RECEIVED`, populates weighed quantity and estimates turnaround delivery time.
+
 #### `GET /api/v1/health`
-- **Description:** Readiness and liveness check verifying MongoDB connectivity and process uptime.
+- **Description:** Readiness and liveness check verifying MongoDB Atlas connectivity and database ready state.
 
 ---
 
@@ -245,6 +253,8 @@ The integration architecture follows a decoupled, secure client-server design:
    - `Expires: 0`
 6. **Log Redaction:**
    - Pino structured logger redacts cookies, auth headers, passwords, tokens, addresses, and phone numbers.
+7. **Database Connection Sanitization:**
+   - `MONGODB_URI` connection strings are sanitized in all log outputs (`mongodb+srv:***@cluster.mongodb.net/...`) to prevent accidental credential leakage.
 
 ---
 
@@ -302,9 +312,8 @@ The integration architecture follows a decoupled, secure client-server design:
    - Client never supplies the amount. The server calculates `totalPaise = sum(quantity * unitPricePaise)` once staff confirms count/weight on `RECEIVED` status.
 2. **Order Creation:** Backend calls Razorpay `/v1/orders` with `amount: totalPaise` and `currency: "INR"`.
 3. **Cryptographic Verification:**
-   - When the client returns `razorpay_order_id`, `razorpay_payment_id`, and `razorpay_signature`:
-   - Server computes:
-     `generatedSignature = hmac_sha256(order_id + "|" + payment_id, key_secret)`
+   - When client returns `razorpay_order_id`, `razorpay_payment_id`, and `razorpay_signature`:
+   - Server computes: `generatedSignature = hmac_sha256(order_id + "|" + payment_id, key_secret)`.
    - Timing-safe comparison ensures validity.
 4. **Signed Webhooks & Duplicate-Event Handling:**
    - Webhook endpoint validates `X-Razorpay-Signature` against raw body.
@@ -315,17 +324,20 @@ The integration architecture follows a decoupled, secure client-server design:
 ## 7. Startup & Local Development Commands
 
 ### Prerequisites
-- Node.js `v22.x` or `v26.x`
-- npm `v11.x`
+- Node.js `v20.x` or `v22.x` LTS
+- npm `v10.x` or `v11.x`
+- A MongoDB Atlas cluster connection string (`mongodb+srv://...`)
 
 ### Running the Backend
 ```bash
 cd backend
 cp .env.example .env
+# Edit .env and set MONGODB_URI to your MongoDB Atlas cluster URI
 npm install
 npm run dev     # Runs on http://localhost:4000
 ```
-> *Note:* If external MongoDB is not reachable on `mongodb://127.0.0.1:27017`, the backend automatically boots an embedded in-memory MongoDB instance for seamless zero-setup local development!
+
+> **Important:** The backend strictly requires a reachable MongoDB Atlas database on startup. Local database defaults and in-memory fallbacks have been removed from the server startup flow. If the Atlas database is unreachable or credentials are missing, the server will terminate immediately (`process.exit(1)`).
 
 ### Running the Frontend
 ```bash
@@ -341,4 +353,4 @@ npm run dev     # Runs on http://localhost:5173
 cd backend
 npm test
 ```
-All 17 integration tests run against an isolated in-memory test database, validating authentication, Argon2id hashing, session revocation, cross-account security, field encryption, idempotency retries, slot capacity limits, and CSRF protection.
+All 18 automated integration tests run against an isolated in-memory test database runner (`mongodb-memory-server`), ensuring zero side-effects on development or production Atlas clusters.
