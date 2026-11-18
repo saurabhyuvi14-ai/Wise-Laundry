@@ -4,8 +4,6 @@ import { ArrowLeft } from 'lucide-react'
 import { Input, FieldShell, control } from '../../../components/ui/Input'
 import { Button } from '../../../components/ui/Button'
 import { useAuth } from '../hooks/useAuth'
-import { IS_DEMO } from '../../../services/api-client'
-import { DEMO_OTP } from '../../../demo/demo-api'
 import { cn } from '../../../utils/cn'
 import { isPhone, safeRedirect } from '../../../utils/bookingValidation'
 
@@ -226,11 +224,6 @@ export function OtpLoginForm() {
           </p>
         </div>
         {alert}
-        {IS_DEMO && (
-          <p className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3.5 py-2.5 text-sm text-amber-800">
-            Demo: no SMS is sent. Use code <span className="font-bold tracking-widest">{DEMO_OTP}</span>
-          </p>
-        )}
         <OtpInput value={code} onChange={setCode} onComplete={checkCode} error={errors.code} disabled={pending} />
         <Button type="submit" size="lg" className="w-full" loading={pending}>Verify and continue</Button>
         <p className="text-center text-sm text-navy-500">

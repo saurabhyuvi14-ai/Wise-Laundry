@@ -5,6 +5,24 @@
 
 ---
 
+## 18 Nov 2026 — Demo removed, Vercel page links fixed
+
+**Branch:** `feature/remove-demo`
+
+### Demo removed
+- The website always uses the real backend and database now. There is no demo mode.
+- Removed: the `src/demo/` folder, "Continue with demo account", "Demo data" badges, demo prices, "Simulate next stage" on Live Tracking, and "Reset demo data" on Profile.
+- `VITE_USE_DEMO` is no longer used. Only `VITE_API_BASE_URL` (default `/api/v1`) remains.
+
+### Vercel
+- Added `frontend/vercel.json` so opening a link like `/login` or `/customer/orders` directly loads the app instead of Vercel's 404 page.
+- Addresses starting with `/api/` are left alone so they can go to the backend.
+- **Still needed:** the backend has to be hosted online. Then add this as the first rewrite in `frontend/vercel.json`, with the real backend address:
+  `{ "source": "/api/:path*", "destination": "https://<backend-address>/api/:path*" }`
+  This keeps the login cookie on the same site, so login works on phones and Safari too.
+
+---
+
 ## 18 Nov 2026 — OTP login built, switched off for now
 
 **Branch:** `feature/otp-login`

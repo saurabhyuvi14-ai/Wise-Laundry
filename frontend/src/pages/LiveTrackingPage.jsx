@@ -1,6 +1,5 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { RotateCw, Headset, FastForward, WifiOff, History, MapPin } from 'lucide-react'
-import { useState } from 'react'
+import { RotateCw, Headset, WifiOff, History, MapPin } from 'lucide-react'
 import { useTracking, useOrders } from '../features/orders/hooks/useOrders'
 import { TrackingTimeline } from '../features/tracking/components/TrackingTimeline'
 import { DeliveryEstimate } from '../features/tracking/components/DeliveryEstimate'
@@ -12,11 +11,8 @@ import { PageSkeleton } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
 import { EmptyState } from '../components/feedback/EmptyState'
 import { Button } from '../components/ui/Button'
-import { DemoBadge } from '../components/feedback/DemoBadge'
-import { useToast } from '../components/feedback/Toast'
 import { STATUS, isActive, stageLabel } from '../features/orders/components/OrderStatusBadge'
 import { formatDateTime, formatRelative } from '../utils/formatDate'
-import { api, IS_DEMO } from '../services/api-client'
 import { cn } from '../utils/cn'
 
 /** /customer/tracking — opens the most recently updated active order, or explains there is nothing to track. */
@@ -31,7 +27,7 @@ export function TrackingLatest() {
   if (latest) return <Navigate to={`/customer/orders/${latest.id}/tracking`} replace />
   return (
     <>
-      <PageHeader title="Live Tracking" description="Track your laundry in real time." badge={<DemoBadge />} />
+      <PageHeader title="Live Tracking" description="Track your laundry in real time." />
       <Card>
         <EmptyState
           icon={MapPin}
@@ -47,11 +43,9 @@ export function TrackingLatest() {
 export default function LiveTrackingPage() {
   const { orderId } = useParams()
   const navigate = useNavigate()
-  const toast = useToast()
   const tracking = useTracking(orderId)
   const services = useServices()
   const orders = useOrders({ status: 'all', pageSize: 50 })
-  const [advancing, setAdvancing] = useState(false)
 
   if (tracking.loading) return <PageSkeleton />
   if (tracking.error && !tracking.data) return <ErrorMessage error={tracking.error} onRetry={tracking.refresh} />
@@ -62,17 +56,9 @@ export default function LiveTrackingPage() {
   const done = t.currentStatus === 'DELIVERED'
   const delivered = t.history.find((h) => h.status === 'DELIVERED')
 
-  async function simulateNext() {
-    setAdvancing(true)
-    await api.demoAdvance(orderId)
-    await tracking.refresh()
-    setAdvancing(false)
-    toast('Demo: moved to next stage')
-  }
-
   return (
     <>
-      <PageHeader title="Live Tracking" description="Track your laundry in real time." badge={<DemoBadge />} />
+      <PageHeader title="Live Tracking" description="Track your laundry in real time." />
 
       <div className="animate-fade-up space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -148,14 +134,6 @@ export default function LiveTrackingPage() {
           </CardBody>
         </Card>
 
-        {IS_DEMO && isActive(t.currentStatus) && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 px-5 py-4 text-sm">
-            <p className="text-amber-800"><span className="font-bold">Demo control.</span> In the real app, laundry staff update stages from their portal.</p>
-            <button onClick={simulateNext} disabled={advancing} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-2 font-semibold text-amber-900 hover:bg-amber-200 disabled:opacity-50">
-              <FastForward className="size-4" /> Simulate next stage
-            </button>
-          </div>
-        )}
       </div>
     </>
   )

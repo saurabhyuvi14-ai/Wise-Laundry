@@ -1,6 +1,5 @@
 import { Layers3, Shirt, WashingMachine } from 'lucide-react'
 import { formatCurrency, UNIT_LABEL } from '../../../utils/formatCurrency'
-import { IS_DEMO } from '../../../services/api-client'
 
 const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', viewBox: '0 0 24 24' }
 
@@ -36,7 +35,6 @@ export function ServiceCard({ service }) {
       <p className="mt-5 flex items-baseline gap-1.5 border-t border-line pt-4">
         <span className="text-xl font-extrabold">{formatCurrency(service.unitPricePaise)}</span>
         <span className="text-sm text-navy-500">{UNIT_LABEL[service.pricingUnit]}</span>
-        {IS_DEMO && <span className="ml-auto text-xs text-navy-400">demo price</span>}
       </p>
     </article>
   )

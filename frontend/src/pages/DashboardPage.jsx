@@ -10,7 +10,6 @@ import { Card } from '../components/ui/Card'
 import { Skeleton } from '../components/ui/Spinner'
 import { EmptyState } from '../components/feedback/EmptyState'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
-import { DemoBadge } from '../components/feedback/DemoBadge'
 import { formatDate, formatSlot } from '../utils/formatDate'
 
 function greeting() {
@@ -99,7 +98,7 @@ export default function DashboardPage() {
     <>
       <header className="mb-8 flex animate-fade-up flex-wrap items-center justify-between gap-5">
         <div>
-          <p className="flex items-center gap-2 text-sm font-medium text-navy-500">{greeting()} <DemoBadge /></p>
+          <p className="flex items-center gap-2 text-sm font-medium text-navy-500">{greeting()}</p>
           <h1 className="mt-1 text-[28px] font-extrabold tracking-tight">Hi, {user.fullName.split(' ')[0]}</h1>
           <p className="text-navy-500">Welcome to Wise Laundry</p>
         </div>

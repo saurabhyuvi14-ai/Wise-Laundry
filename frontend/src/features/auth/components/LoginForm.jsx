@@ -3,8 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Input, PasswordInput } from '../../../components/ui/Input'
 import { Button } from '../../../components/ui/Button'
 import { useAuth } from '../hooks/useAuth'
-import { IS_DEMO } from '../../../services/api-client'
-import { demoUser } from '../../../demo/user'
 import { validate, required, isEmail, safeRedirect } from '../../../utils/bookingValidation'
 // OTP login is switched off until the backend has the OTP endpoints. To turn it on, remove the
 // comments marked "OTP" in this file.
@@ -56,23 +54,8 @@ export function EmailLoginForm() {
 
 /** Login screen: email and password. (Mobile number + OTP is built but switched off for now.) */
 export function LoginForm() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   // OTP: const [mode, setMode] = useState('phone') // phone | email
-  const [demoPending, setDemoPending] = useState(false)
-
-  async function demoLogin() {
-    // Demo login always opens the Dashboard (the app's home), whatever page was open before.
-    setParams({}, { replace: true })
-    setDemoPending(true)
-    try {
-      await login({ email: demoUser.email, password: 'demo' })
-      navigate('/customer', { replace: true })
-    } catch {
-      setDemoPending(false)
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -88,17 +71,6 @@ export function LoginForm() {
         {mode === 'phone' ? 'Use email instead' : 'Use mobile number instead'}
       </button>
       */}
-
-      {IS_DEMO && (
-        <button
-          type="button"
-          onClick={demoLogin}
-          disabled={demoPending}
-          className="w-full rounded-xl border border-dashed border-amber-300 bg-amber-50/60 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 disabled:opacity-60"
-        >
-          Continue with demo account
-        </button>
-      )}
 
       <p className="text-center text-sm text-navy-500">
         New to Wise Laundry? <Link to={`/register${params.get('redirect') ? `?redirect=${encodeURIComponent(params.get('redirect'))}` : ''}`} className="font-semibold text-brand-700 hover:underline">Create an account</Link>

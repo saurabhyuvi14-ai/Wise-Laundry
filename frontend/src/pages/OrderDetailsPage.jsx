@@ -9,7 +9,6 @@ import { Card, CardHeader, CardBody } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PageSkeleton } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
-import { DemoBadge } from '../components/feedback/DemoBadge'
 import { formatCurrency, UNIT_LABEL } from '../utils/formatCurrency'
 import { formatDate, formatDateTime, formatSlot } from '../utils/formatDate'
 import { ADDRESS_LABELS, formatAddress } from '../features/addresses/components/AddressCard'
@@ -35,7 +34,7 @@ export default function OrderDetailsPage() {
         back={{ to: '/customer/orders', label: 'My Orders' }}
         title={`Order ${order.reference}`}
         description={`Placed on ${formatDate(order.createdAt)}`}
-        badge={<><OrderStatusBadge status={order.currentStatus} label={stageLabel(order.currentStatus, service)} /><DemoBadge /></>}
+        badge={<OrderStatusBadge status={order.currentStatus} label={stageLabel(order.currentStatus, service)} />}
         action={!cancelled && <Button to={`/customer/orders/${order.id}/tracking`}>Track live <ArrowRight className="size-4" /></Button>}
       />
 

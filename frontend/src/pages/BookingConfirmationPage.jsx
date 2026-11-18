@@ -5,7 +5,6 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { PageSkeleton } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
-import { DemoBadge } from '../components/feedback/DemoBadge'
 import { formatSlot } from '../utils/formatDate'
 import { formatAddress } from '../features/addresses/components/AddressCard'
 
@@ -32,8 +31,7 @@ export default function BookingConfirmationPage() {
           <h1 className="mt-5 text-2xl font-extrabold tracking-tight">Pickup booked!</h1>
           <p className="mt-1 text-navy-500">Your order reference is</p>
           <p className="mt-2 inline-block rounded-xl bg-white px-4 py-1.5 text-xl font-extrabold tracking-wide ring-1 ring-line">{order.reference}</p>
-          <div className="mt-3"><DemoBadge /></div>
-        </div>
+                  </div>
 
         <dl className="grid gap-px border-y border-line bg-line text-left sm:grid-cols-3">
           {[

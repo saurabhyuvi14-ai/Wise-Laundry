@@ -1,7 +1,6 @@
-import { demoApi } from '../demo/demo-api'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-// The ONE place real HTTP calls go through. Used once VITE_USE_DEMO=false.
+// The ONE place HTTP calls go through.
 // Defaults to '/api/v1' which proxies locally via Vite and routes same-origin in staging/production.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
@@ -52,7 +51,7 @@ export async function apiClient(path, { method = 'GET', body, headers = {}, sign
   return payload
 }
 
-// Real backend endpoints (guide §10). Same function names as demo/demo-api.js.
+// Backend endpoints (guide §10).
 
 export const laundryApi = {
   // auth
@@ -80,13 +79,9 @@ export const laundryApi = {
     apiClient(`/orders?status=${status}&page=${page}&pageSize=${pageSize}`),
   getOrder: (id) => apiClient(`/orders/${id}`),
   getTracking: (id, signal) => apiClient(`/orders/${id}/tracking`, { signal }),
-  demoAdvance: (id) => apiClient(`/orders/${id}/advance`, { method: 'POST' }),
 }
 
-// Switch between demo fixtures and the real Express API with one env flag.
-
-export const IS_DEMO = import.meta.env.VITE_USE_DEMO !== 'false'
-export const api = IS_DEMO ? demoApi : laundryApi
+export const api = laundryApi
 
 /** Small data hook: { data, meta, error, loading, reload } for any api.* call. */
 export function useApi(fetcher, deps = []) {
