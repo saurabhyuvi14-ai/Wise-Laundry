@@ -50,7 +50,6 @@ export function AuthProvider({ children }) {
     await api.logout()
     try {
       sessionStorage.removeItem('wise-laundry-booking-draft')
-      sessionStorage.removeItem('wise-laundry-demo-session')
       sessionStorage.clear()
     } catch { /* ignore */ }
     setLoggedOut(true)

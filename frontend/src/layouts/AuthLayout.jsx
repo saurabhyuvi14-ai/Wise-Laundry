@@ -1,6 +1,5 @@
 import { Outlet, Navigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '../components/navigation/Navbar'
-import { DemoBadge } from '../components/feedback/DemoBadge'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { safeRedirect } from '../utils/bookingValidation'
 
@@ -15,7 +14,7 @@ export function AuthLayout() {
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex items-center justify-between">
           <Logo />
-          <DemoBadge />
+         
         </div>
         <div className="animate-fade-up rounded-2xl border border-line bg-white p-6 shadow-soft sm:p-8">
           <Outlet />

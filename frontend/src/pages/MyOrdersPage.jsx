@@ -8,7 +8,6 @@ import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Spinner'
 import { EmptyState } from '../components/feedback/EmptyState'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
-import { DemoBadge } from '../components/feedback/DemoBadge'
 import { cn } from '../utils/cn'
 
 const PAGE_SIZE = 5
@@ -32,7 +31,7 @@ export default function MyOrdersPage() {
 
   return (
     <>
-      <PageHeader title="My Orders" description="View and manage your laundry orders." badge={<DemoBadge />} />
+      <PageHeader title="My Orders" description="View and manage your laundry orders." />
 
       <Card className="animate-fade-up">
         <div role="tablist" aria-label="Order status" className="flex gap-6 border-b border-line px-5 sm:px-6">
