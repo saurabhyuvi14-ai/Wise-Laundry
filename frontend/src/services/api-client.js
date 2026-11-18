@@ -58,6 +58,8 @@ export const laundryApi = {
   // auth
   login: (body) => apiClient('/auth/login', { method: 'POST', body }),
   register: (body) => apiClient('/auth/register', { method: 'POST', body }),
+  requestOtp: (body) => apiClient('/auth/otp/request', { method: 'POST', body }),
+  verifyOtp: (body) => apiClient('/auth/otp/verify', { method: 'POST', body }),
   logout: () => apiClient('/auth/logout', { method: 'POST' }),
   me: () => apiClient('/auth/me'),
   updateMe: (body) => apiClient('/users/me', { method: 'PATCH', body }),
