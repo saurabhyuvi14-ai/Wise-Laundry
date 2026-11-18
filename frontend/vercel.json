@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://wise-laundry-api.vercel.app/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://wise-laundry1.vercel.app/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
