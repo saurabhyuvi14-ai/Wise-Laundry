@@ -29,6 +29,16 @@ export function AuthProvider({ children }) {
     return res.data
   }, [])
 
+  // Google sign-in. A new person gets needsPhone back and is only signed in once they add a phone number.
+  const googleSignIn = useCallback(async (credential, phone) => {
+    const res = await api.googleSignIn(phone ? { credential, phone } : { credential })
+    if (res.data.user) {
+      setLoggedOut(false)
+      setUser(res.data.user)
+    }
+    return res.data
+  }, [])
+
   // OTP login. A new number is signed in but has no name yet, so the user is only
   // set once completeProfile() saves it (setting it earlier would leave the login page).
   const requestOtp = useCallback((phone) => api.requestOtp({ phone }), [])
@@ -57,8 +67,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, status, loggedOut, login, register, requestOtp, verifyOtp, completeProfile, logout, setUser }),
-    [user, status, loggedOut, login, register, requestOtp, verifyOtp, completeProfile, logout],
+    () => ({ user, status, loggedOut, login, register, googleSignIn, requestOtp, verifyOtp, completeProfile, logout, setUser }),
+    [user, status, loggedOut, login, register, googleSignIn, requestOtp, verifyOtp, completeProfile, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

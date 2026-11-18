@@ -5,6 +5,35 @@
 
 ---
 
+## 18 Nov 2026 — Sign in with Google
+
+**Branch:** `feature/google-sign-in` (on top of `feature/remove-demo`)
+
+### Website
+- **Continue with Google** on the Log in page and **Sign up with Google** on the Create account page, above the email form.
+- A new person picks their Google account, then sees **One last step** and adds their mobile number once (the backend needs one for every customer). Then they're signed in.
+- Someone who already has an account with the same email is signed straight in, and their email is marked verified.
+- If Google can't load (or `VITE_GOOGLE_CLIENT_ID` is empty), the button and the "or" line are hidden and the email form works as before.
+- If the person takes too long on the phone step (Google's proof lasts about an hour), they're sent back with "That took too long. Please continue with Google again."
+
+### Backend (needed for this, please review — Saurabh)
+- New route `POST /api/v1/auth/google` with `{ credential, phone? }`.
+  - Checks Google's ID token with `google-auth-library` (new dependency) against `GOOGLE_CLIENT_ID`.
+  - Existing user (same Google account or same email): signs in, links the Google account, sets `isEmailVerified: true`.
+  - New person without `phone`: returns `{ data: { user: null, needsPhone: true, profile: { fullName, email } } }` and saves nothing.
+  - New person with `phone`: creates the customer and signs in. Returns `{ data: { user, needsPhone: false } }`.
+  - Errors: `401` bad or expired Google proof, `400` Google email not verified or bad phone, `503 GOOGLE_NOT_CONFIGURED` when `GOOGLE_CLIENT_ID` is empty.
+- `User` model: new `googleId` field (unique when set, never sent to the browser). `passwordHash` is only required when there's no `googleId`. A Google-only account can't log in with email and password.
+- `tests/google.test.js`: 9 tests. `tests/helpers/testDb.js` now uses `MONGODB_TEST_URI` when it's set, as `.env.example` already says.
+
+### Setup (once, free, no card)
+1. Google Cloud Console → create a project → **APIs & Services → OAuth consent screen**: External, app name "Wise Laundry", your email.
+2. **Credentials → Create credentials → OAuth client ID → Web application.**
+3. **Authorized JavaScript origins:** `http://localhost:5173` and `http://localhost` (later also the Vercel address). No redirect URI is needed.
+4. Copy the **Client ID** into `backend/.env` as `GOOGLE_CLIENT_ID=` and into `frontend/.env` as `VITE_GOOGLE_CLIENT_ID=`. Restart both.
+
+---
+
 ## 18 Nov 2026 — Demo removed, Vercel page links fixed
 
 **Branch:** `feature/remove-demo`

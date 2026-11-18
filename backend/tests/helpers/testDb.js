@@ -6,8 +6,12 @@ let mongod
 
 export async function setupTestDb() {
   process.env.NODE_ENV = 'test'
-  mongod = await MongoMemoryServer.create()
-  const uri = mongod.getUri()
+  // Use MONGODB_TEST_URI when given (e.g. a local test database); otherwise start an in-memory MongoDB.
+  let uri = process.env.MONGODB_TEST_URI
+  if (!uri) {
+    mongod = await MongoMemoryServer.create()
+    uri = mongod.getUri()
+  }
   await mongoose.connect(uri)
   await seedInitialServices()
   return { uri }

@@ -2,6 +2,7 @@ import * as authService from '../services/auth.service.js'
 import {
   registerSchema,
   loginSchema,
+  googleSignInSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   validate,
@@ -45,6 +46,22 @@ export async function login(req, res, next) {
 
     res.cookie(COOKIE_NAME, rawToken, cookieOptions)
     return res.json({ data: user.toJSON() })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function googleSignIn(req, res, next) {
+  try {
+    const data = validate(googleSignInSchema, req.body)
+    const result = await authService.googleSignIn({ ...data, req })
+
+    if (result.needsPhone) {
+      return res.json({ data: { user: null, needsPhone: true, profile: result.profile } })
+    }
+
+    res.cookie(COOKIE_NAME, result.rawToken, cookieOptions)
+    return res.json({ data: { user: result.user.toJSON(), needsPhone: false } })
   } catch (err) {
     next(err)
   }
