@@ -5,6 +5,32 @@
 
 ---
 
+## 18 Nov 2026 — Backend on Vercel, so the live site works
+
+**Branch:** `feature/vercel-backend` (on top of `feature/google-sign-in`)
+
+### What changed
+- `frontend/vercel.json`: requests to `/api/...` on the website are forwarded to the backend at `https://wise-laundry1.vercel.app`. The browser only ever talks to `wise-laundry.vercel.app`, so the login cookie works on every phone and browser. If the backend project gets a different address, change it here.
+- `backend/api/index.js` (new): how Vercel runs the backend. It connects to MongoDB once per running copy and reuses it. If the database can't be reached it answers `503 DATABASE_UNAVAILABLE` instead of crashing. `npm run dev` on a laptop is unchanged.
+- `backend/vercel.json` (new): sends every request to that entry point.
+- `backend/.vercelignore` (new): the Vercel CLI never uploads `.env` or the tests.
+
+### Setup (once, free)
+**Backend project (Vercel CLI, from a laptop):**
+1. `cd backend` then `npx vercel` and log in. Answer: new project, name `wise-laundry1`, directory `./`.
+2. Vercel dashboard → `wise-laundry1` → Settings → Environment Variables. Add for Production:
+   `MONGODB_URI`, `ENCRYPTION_KEY`, `SESSION_SECRET`, `GOOGLE_CLIENT_ID` (same as in `backend/.env`) and
+   `ALLOWED_ORIGINS=https://wise-laundry.vercel.app`.
+3. `npx vercel --prod`. Check `https://wise-laundry1.vercel.app/api/v1/health` shows `"connected"`.
+
+**MongoDB Atlas:** Network Access → Add IP Address → `0.0.0.0/0` (Vercel has no fixed IP; the database password still protects it).
+
+**Google Cloud:** your OAuth client → Authorized JavaScript origins → add `https://wise-laundry.vercel.app`.
+
+**Frontend project (`wise-laundry` on Vercel):** Settings → Environment Variables → `VITE_GOOGLE_CLIENT_ID` (same Client ID), then redeploy after this branch is merged.
+
+---
+
 ## 18 Nov 2026 — Sign in with Google
 
 **Branch:** `feature/google-sign-in` (on top of `feature/remove-demo`)
