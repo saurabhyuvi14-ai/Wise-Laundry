@@ -21,9 +21,17 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Not required for people who only sign in with Google.
     passwordHash: {
       type: String,
-      required: true,
+      required() {
+        return !this.googleId
+      },
+    },
+    // Google's account id ("sub"). Set when the user signs in with Google.
+    googleId: {
+      type: String,
+      default: undefined,
     },
     role: {
       type: String,
@@ -61,6 +69,7 @@ const userSchema = new mongoose.Schema(
         delete ret._id
         delete ret.__v
         delete ret.passwordHash
+        delete ret.googleId
         delete ret.emailVerificationToken
         delete ret.emailVerificationExpires
         delete ret.passwordResetToken
@@ -80,7 +89,10 @@ userSchema.statics.hashPassword = async function (plainPassword) {
   })
 }
 
+userSchema.index({ googleId: 1 }, { unique: true, sparse: true })
+
 userSchema.methods.verifyPassword = async function (plainPassword) {
+  if (!this.passwordHash) return false // Google-only account
   return argon2.verify(this.passwordHash, plainPassword)
 }
 

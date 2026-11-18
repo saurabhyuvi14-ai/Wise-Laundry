@@ -27,6 +27,11 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+export const googleSignInSchema = z.object({
+  credential: z.string().trim().min(20, 'Google sign-in failed. Please try again.'),
+  phone: z.string().trim().regex(phoneRegex, 'Enter a valid 10-digit mobile number').optional(),
+})
+
 export const updateMeSchema = z.object({
   fullName: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
