@@ -134,6 +134,17 @@ describe('Sign in with Google', () => {
     assert.equal(await User.countDocuments(), 0)
   })
 
+  test('a Client ID mismatch says so clearly', async () => {
+    const real = googleVerifier.verifyIdToken
+    googleVerifier.verifyIdToken = async () => {
+      throw new Error('Wrong recipient, payload audience != requiredAudience')
+    }
+    const res = await post({ credential: credentialFor('new.person@gmail.com') })
+    googleVerifier.verifyIdToken = real
+    assert.equal(res.status, 401)
+    assert.equal((await res.json()).error.code, 'GOOGLE_CLIENT_ID_MISMATCH')
+  })
+
   test('a Google account without a verified email is rejected', async () => {
     const res = await post({ credential: credentialFor('unverified@gmail.com'), phone: '9876501234' })
     assert.equal(res.status, 400)
