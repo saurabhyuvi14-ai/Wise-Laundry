@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'google-auth-library'
 import { config } from '../config/env.js'
 import { ApiError } from '../utils/errors.js'
+import { logger } from '../config/logger.js'
 
 const client = new OAuth2Client()
 
@@ -24,8 +25,8 @@ export async function verifyGoogleCredential(credential) {
   let payload
   try {
     payload = await googleVerifier.verifyIdToken(credential, config.GOOGLE_CLIENT_ID)
-  } catch {
-    throw ApiError.unauthenticated('Google sign-in failed. Please try again.')
+  } catch (err) {
+    throw explainGoogleError(err)
   }
 
   if (!payload?.sub || !payload.email) {
@@ -41,4 +42,21 @@ export async function verifyGoogleCredential(credential) {
     email,
     fullName: (payload.name || email.split('@')[0]).trim().slice(0, 100),
   }
+}
+
+// Turns Google's error into a clear reason, so a setup mistake is easy to spot. Client IDs are public.
+function explainGoogleError(err) {
+  const reason = String(err?.message || err)
+  logger.warn({ reason }, 'Google sign-in rejected')
+
+  if (/audience|recipient/i.test(reason)) {
+    return new ApiError(401, 'GOOGLE_CLIENT_ID_MISMATCH', 'Google sign-in is set up with a different Client ID on the server. Check GOOGLE_CLIENT_ID on the backend.')
+  }
+  if (/expired|too late|too early|used too/i.test(reason)) {
+    return new ApiError(401, 'GOOGLE_TOKEN_EXPIRED', 'Your Google sign-in expired. Please try again.')
+  }
+  if (/certificate|certs|fetch|network|socket|timeout|ENOTFOUND|ECONN|EAI_AGAIN/i.test(reason)) {
+    return new ApiError(503, 'GOOGLE_UNREACHABLE', 'We could not reach Google right now. Please try again shortly.')
+  }
+  return new ApiError(401, 'GOOGLE_TOKEN_INVALID', 'Google sign-in failed. Please try again.')
 }

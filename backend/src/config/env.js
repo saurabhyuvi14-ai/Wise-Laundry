@@ -20,7 +20,11 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(20),
   DEFAULT_SLOT_CAPACITY: z.coerce.number().default(5),
   // OAuth client ID from Google Cloud Console. Leave empty to switch Google sign-in off.
-  GOOGLE_CLIENT_ID: z.string().optional().default(''),
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .optional()
+    .default('')
+    .transform((v) => v.trim().replace(/^["']|["']$/g, '').trim()),
 })
 
 let parsed = envSchema.safeParse(process.env)
