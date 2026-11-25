@@ -5,6 +5,16 @@
 
 ---
 
+## 25 Nov 2026 — Stay logged in
+
+**Branch:** `feature/stay-logged-in`
+
+- A login now lasts **30 days** (was 7) and **renews itself** every time the person uses the site (at most once a day), so regular customers don't get logged out.
+- **Google auto sign-in:** on the Log in page, Google shows "Continue as …" by itself and signs returning people straight back in (`auto_select`, also on Safari via `itp_support`).
+- After a deliberate **Log out**, auto sign-in is switched off for that browser, so logging out still works.
+- Backend: `src/config/session.js` holds the login length and cookie settings in one place; `Session.renewIfNeeded()` does the renewal in `requireAuth`. Tests: `tests/session.test.js`.
+- iPhone note: Google only offers accounts that are signed in **inside that browser**. Apps' built-in browsers (WhatsApp, Gmail) don't share Safari's Google login.
+
 ## 25 Nov 2026 — Reschedule and cancel a pickup
 
 **Branch:** `feature/reschedule-cancel`

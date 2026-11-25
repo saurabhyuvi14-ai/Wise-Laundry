@@ -1,9 +1,10 @@
 import { Session } from '../models/Session.js'
 import { ApiError } from '../utils/errors.js'
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from '../config/session.js'
 
-export async function requireAuth(req, _res, next) {
+export async function requireAuth(req, res, next) {
   try {
-    const rawToken = req.cookies?.wise_session || extractBearerToken(req.headers.authorization)
+    const rawToken = req.cookies?.[SESSION_COOKIE_NAME] || extractBearerToken(req.headers.authorization)
 
     if (!rawToken) {
       throw ApiError.unauthenticated('Please sign in to continue.')
@@ -12,6 +13,11 @@ export async function requireAuth(req, _res, next) {
     const session = await Session.validateSession(rawToken)
     if (!session || !session.userId) {
       throw ApiError.unauthenticated('Your session has expired or is invalid. Please sign in again.')
+    }
+
+    // Keep active people logged in: renew the login (and the cookie, if one was used).
+    if ((await Session.renewIfNeeded(session)) && req.cookies?.[SESSION_COOKIE_NAME]) {
+      res.cookie(SESSION_COOKIE_NAME, rawToken, sessionCookieOptions)
     }
 
     req.user = session.userId

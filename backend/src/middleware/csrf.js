@@ -14,7 +14,7 @@ export function csrfProtection(req, res, next) {
       secure: config?.NODE_ENV === 'production',
       sameSite: config?.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     })
   }
 

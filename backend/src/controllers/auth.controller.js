@@ -9,14 +9,7 @@ import {
 } from '../utils/validation.js'
 import { config } from '../config/env.js'
 
-const COOKIE_NAME = 'wise_session'
-const cookieOptions = {
-  httpOnly: true,
-  secure: config?.NODE_ENV === 'production',
-  sameSite: config?.NODE_ENV === 'production' ? 'strict' : 'lax',
-  path: '/',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-}
+import { SESSION_COOKIE_NAME as COOKIE_NAME, sessionCookieOptions as cookieOptions } from '../config/session.js'
 
 export async function register(req, res, next) {
   try {

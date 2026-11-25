@@ -1,5 +1,8 @@
 import mongoose from 'mongoose'
 import { generateSecureToken, hashToken } from '../utils/crypto.js'
+import { SESSION_DAYS } from '../config/session.js'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 const sessionSchema = new mongoose.Schema(
   {
@@ -39,7 +42,7 @@ const sessionSchema = new mongoose.Schema(
   },
 )
 
-sessionSchema.statics.createSession = async function (userId, req, days = 7) {
+sessionSchema.statics.createSession = async function (userId, req, days = SESSION_DAYS) {
   const rawToken = generateSecureToken(32)
   const tokenHash = hashToken(rawToken)
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
@@ -67,6 +70,19 @@ sessionSchema.statics.validateSession = async function (rawToken) {
 
   if (!session || !session.userId) return null
   return session
+}
+
+/**
+ * Sliding login: push the expiry back to a full SESSION_DAYS from now.
+ * Runs at most once a day per session so it doesn't write on every request.
+ * Returns true when it renewed (the caller then refreshes the cookie too).
+ */
+sessionSchema.statics.renewIfNeeded = async function (session) {
+  const fullExpiry = Date.now() + SESSION_DAYS * DAY_MS
+  if (fullExpiry - session.expiresAt.getTime() < DAY_MS) return false
+  session.expiresAt = new Date(fullExpiry)
+  await this.updateOne({ _id: session._id }, { $set: { expiresAt: session.expiresAt } })
+  return true
 }
 
 sessionSchema.statics.revokeSession = async function (rawToken) {
