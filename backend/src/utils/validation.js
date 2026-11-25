@@ -137,6 +137,11 @@ export const rescheduleOrderSchema = z.object({
   pickupSlotHours: z.number().min(1).max(6).optional(),
 })
 
+export const saveBillSchema = z.object({
+  quantity: z.coerce.number({ invalid_type_error: 'Enter a number.' }),
+  note: z.string().trim().max(200).optional().default(''),
+})
+
 export const listOrdersQuerySchema = z.object({
   status: z.enum(['all', 'active', 'past']).default('all'),
   page: z.coerce.number().int().min(1).default(1),

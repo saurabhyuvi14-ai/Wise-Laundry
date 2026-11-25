@@ -13,6 +13,7 @@ import { formatCurrency, UNIT_LABEL } from '../utils/formatCurrency'
 import { formatDate, formatDateTime, formatSlot } from '../utils/formatDate'
 import { ADDRESS_LABELS, formatAddress } from '../features/addresses/components/AddressCard'
 import { OrderChanges } from '../features/orders/components/OrderChanges'
+import { OrderBill } from '../features/orders/components/OrderBill'
 import { useToast } from '../components/feedback/Toast'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
@@ -61,8 +62,10 @@ export default function OrderDetailsPage() {
           </Card>
 
           <Card>
-            <CardHeader icon={Receipt} title="Items & price" />
+            <CardHeader icon={Receipt} title={order.bill ? "Your bill" : "Items & price"} />
             <CardBody>
+              {order.bill ? <OrderBill order={order} /> : (
+              <>
               <div className="flex items-center gap-4 rounded-xl border border-line p-4">
                 <span className="grid size-11 place-items-center rounded-xl bg-canvas text-navy-700"><ServiceIcon name={item.serviceName} /></span>
                 <div className="flex-1">
@@ -82,6 +85,8 @@ export default function OrderDetailsPage() {
                   <span className="text-sm font-medium text-navy-500">{cancelled ? 'No charge' : 'Confirmed after collection'}</span>
                 )}
               </div>
+              </>
+              )}
             </CardBody>
           </Card>
 
