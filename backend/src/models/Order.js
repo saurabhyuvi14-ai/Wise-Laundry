@@ -133,6 +133,23 @@ const orderSchema = new mongoose.Schema(
       default: 'BOOKED',
       index: true,
     },
+    // Final bill, written by staff after weighing / counting.
+    bill: {
+      lines: {
+        type: [
+          new mongoose.Schema(
+            { label: String, detail: String, amountPaise: Number },
+            { _id: false },
+          ),
+        ],
+        default: undefined,
+      },
+      subtotalPaise: { type: Number, default: null },
+      totalPaise: { type: Number, default: null },
+      finalizedAt: { type: Date, default: null },
+      finalizedBy: { type: String, default: null },
+      revision: { type: Number, default: 0 },
+    },
     // Cancel / reschedule
     rescheduleCount: {
       type: Number,
@@ -224,9 +241,20 @@ const orderSchema = new mongoose.Schema(
           : null
 
         const priced = ret.items.length > 0 && ret.items.every((i) => i.quantity != null)
-        ret.totalPaise = priced
-          ? Math.round(ret.items.reduce((acc, i) => acc + i.quantity * i.unitPricePaise, 0))
+        ret.bill = ret.bill?.finalizedAt
+          ? {
+              lines: ret.bill.lines || [],
+              subtotalPaise: ret.bill.subtotalPaise,
+              totalPaise: ret.bill.totalPaise,
+              finalizedAt: ret.bill.finalizedAt.toISOString(),
+              revision: ret.bill.revision || 1,
+            }
           : null
+        ret.totalPaise = ret.bill
+          ? ret.bill.totalPaise
+          : priced
+            ? Math.round(ret.items.reduce((acc, i) => acc + i.quantity * i.unitPricePaise, 0))
+            : null
 
         delete ret._id
         delete ret.__v

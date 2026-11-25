@@ -5,6 +5,48 @@
 
 ---
 
+## 25 Nov 2026 — Final bill after pickup
+
+**Branch:** `feature/final-bill`
+
+### How it works
+1. The rider picks up the clothes (order is **Picked up**).
+2. Staff open **Weigh & bill** (`/staff`), type the order number (e.g. `WL-1001`), and enter the **weight in kg** (one decimal) or the **number of items** for Iron Only.
+3. The backend works out the bill and saves it. The order moves to **At laundry**, and the customer sees **Your bill** on the order page straight away.
+4. Staff can correct the bill until the order goes **out for delivery**. The customer sees "(updated)".
+5. Customers can open **View / print bill** for a clean bill page and use **Print / Save as PDF**.
+
+### Making someone staff
+```bash
+cd backend
+npm run make-staff -- their@email.com          # give staff access
+npm run make-staff -- their@email.com CUSTOMER # take it away
+```
+They must have signed up first. Staff see a **Weigh & bill** link in the menu.
+
+### Extra charges (all off until you set them, in `backend/.env` / Vercel)
+- `BILL_MIN_ORDER_PAISE`: minimum order (adds a "Minimum order top-up" line).
+- `BILL_DELIVERY_FEE_PAISE`, `BILL_FREE_DELIVERY_ABOVE_PAISE`: delivery fee, free above an amount.
+- `BILL_GST_PERCENT`: GST line on the total.
+- Amounts are in paise: `4900` = ₹49.
+
+### For the backend
+- `GET /staff/orders/:id` and `POST /staff/orders/:id/bill` with `{ quantity, note? }` (STAFF or ADMIN only).
+- Orders now include `bill: { lines[{ label, detail, amountPaise }], subtotalPaise, totalPaise, finalizedAt, revision }`. `totalPaise` comes from the bill when there is one.
+- Bill maths: `src/services/billing.service.js`. Tests: `tests/billing.test.js` (7 tests).
+
+---
+
+## 25 Nov 2026 — Stay logged in
+
+**Branch:** `feature/stay-logged-in`
+
+- A login now lasts **30 days** (was 7) and **renews itself** every time the person uses the site (at most once a day), so regular customers don't get logged out.
+- **Google auto sign-in:** on the Log in page, Google shows "Continue as …" by itself and signs returning people straight back in (`auto_select`, also on Safari via `itp_support`).
+- After a deliberate **Log out**, auto sign-in is switched off for that browser, so logging out still works.
+- Backend: `src/config/session.js` holds the login length and cookie settings in one place; `Session.renewIfNeeded()` does the renewal in `requireAuth`. Tests: `tests/session.test.js`.
+- iPhone note: Google only offers accounts that are signed in **inside that browser**. Apps' built-in browsers (WhatsApp, Gmail) don't share Safari's Google login.
+
 ## 25 Nov 2026 — Reschedule and cancel a pickup
 
 **Branch:** `feature/reschedule-cancel`

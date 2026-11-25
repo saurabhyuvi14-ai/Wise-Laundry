@@ -47,8 +47,15 @@ function GoogleButton({ text, onCredentialReceived, onUnavailable }) {
             callback: (response) => onCredential(response.credential),
             ux_mode: 'popup',
             context: 'signin',
+            // Returning people are signed straight back in, without tapping anything.
+            auto_select: true,
+            // Lets the "Continue as …" card show in Safari on iPhone too.
+            itp_support: true,
+            cancel_on_tap_outside: false,
           })
           initialized = true
+          // Show the "Continue as …" card on its own, once per page load.
+          google.accounts.id.prompt()
         }
         google.accounts.id.renderButton(ref.current, {
           type: 'standard',

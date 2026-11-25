@@ -20,6 +20,11 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(20),
   DEFAULT_SLOT_CAPACITY: z.coerce.number().default(5),
   // Customers can cancel or reschedule until this many minutes before the pickup window starts.
+  // Final bill extras (all off by default; amounts in paise, e.g. 4900 = ₹49).
+  BILL_MIN_ORDER_PAISE: z.coerce.number().int().min(0).default(0),
+  BILL_DELIVERY_FEE_PAISE: z.coerce.number().int().min(0).default(0),
+  BILL_FREE_DELIVERY_ABOVE_PAISE: z.coerce.number().int().min(0).default(0),
+  BILL_GST_PERCENT: z.coerce.number().min(0).max(28).default(0),
   ORDER_CHANGE_CUTOFF_MINUTES: z.coerce.number().int().min(0).default(120),
   // How many times one order can be rescheduled.
   ORDER_MAX_RESCHEDULES: z.coerce.number().int().min(0).default(2),

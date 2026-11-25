@@ -65,6 +65,8 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     await api.logout()
+    // After a deliberate logout, don't let Google sign the person straight back in.
+    try { window.google?.accounts?.id?.disableAutoSelect() } catch { /* ignore */ }
     try {
       sessionStorage.removeItem('wise-laundry-booking-draft')
       sessionStorage.clear()

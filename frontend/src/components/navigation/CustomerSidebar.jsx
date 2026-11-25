@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
@@ -42,7 +42,7 @@ export function CustomerSidebar() {
       </Link>
 
       <nav aria-label="Main" className="mt-6 flex flex-col gap-1">
-        {customerNav.map(({ to, label, icon: Icon }) => {
+        {[...customerNav, ...(['STAFF', 'ADMIN'].includes(user?.role) ? [{ to: '/staff', label: 'Weigh & bill', icon: Scale }] : [])].map(({ to, label, icon: Icon }) => {
           const active = current === to
           return (
             <NavLink

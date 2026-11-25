@@ -81,6 +81,8 @@ export const laundryApi = {
   listOrders: ({ status = 'all', page = 1, pageSize = 10 } = {}) =>
     apiClient(`/orders?status=${status}&page=${page}&pageSize=${pageSize}`),
   getOrder: (id) => apiClient(`/orders/${id}`),
+  staffGetOrder: (id) => apiClient(`/staff/orders/${encodeURIComponent(id)}`),
+  staffSaveBill: (id, body) => apiClient(`/staff/orders/${encodeURIComponent(id)}/bill`, { method: 'POST', body }),
   cancelOrder: (id, body) => apiClient(`/orders/${id}/cancel`, { method: 'POST', body }),
   rescheduleOrder: (id, body) => apiClient(`/orders/${id}/reschedule`, { method: 'POST', body }),
   getTracking: (id, signal) => apiClient(`/orders/${id}/tracking`, { signal }),
