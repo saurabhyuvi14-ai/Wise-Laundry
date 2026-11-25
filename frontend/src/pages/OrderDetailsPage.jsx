@@ -12,15 +12,25 @@ import { ErrorMessage } from '../components/feedback/ErrorMessage'
 import { formatCurrency, UNIT_LABEL } from '../utils/formatCurrency'
 import { formatDate, formatDateTime, formatSlot } from '../utils/formatDate'
 import { ADDRESS_LABELS, formatAddress } from '../features/addresses/components/AddressCard'
+import { OrderChanges } from '../features/orders/components/OrderChanges'
+import { useToast } from '../components/feedback/Toast'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
 export default function OrderDetailsPage() {
   const { orderId } = useParams()
-  const { data: order, loading, error, reload } = useOrder(orderId)
+  const { data: order, loading, error, reload, setData } = useOrder(orderId)
   const services = useServices()
+  const toast = useToast()
 
-  if (loading) return <PageSkeleton />
+  // After a reschedule or cancel: show the updated order, or reload it if the change was refused.
+  function onChanged(updated, message, tone = 'success') {
+    if (updated) setData(updated)
+    else reload({ silent: true })
+    if (message) toast(message, tone)
+  }
+
+  if (loading && !order) return <PageSkeleton />
   if (error) return <ErrorMessage error={error} onRetry={reload} />
 
   const item = order.items[0]
@@ -93,6 +103,7 @@ export default function OrderDetailsPage() {
               <p className="font-semibold">{order.estimatedDeliveryAt ? formatDateTime(order.estimatedDeliveryAt) : 'Not estimated yet'}</p>
             </CardBody>
           </Card>
+          <OrderChanges order={order} onChanged={onChanged} />
           <Card>
             <CardHeader icon={MapPin} title={`${ADDRESS_LABELS[a.label] ?? 'Address'}`} />
             <CardBody className="pt-3 text-sm">

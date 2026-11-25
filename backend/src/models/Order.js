@@ -1,3 +1,4 @@
+import { getChangeRules } from '../services/orderPolicy.js'
 import mongoose from 'mongoose'
 import { encrypt, decrypt } from '../utils/crypto.js'
 
@@ -132,6 +133,31 @@ const orderSchema = new mongoose.Schema(
       default: 'BOOKED',
       index: true,
     },
+    // Cancel / reschedule
+    rescheduleCount: {
+      type: Number,
+      default: 0,
+    },
+    scheduleHistory: {
+      type: [
+        new mongoose.Schema(
+          {
+            from: { type: Date, required: true },
+            to: { type: Date, required: true },
+            changedAt: { type: Date, default: Date.now },
+            changedBy: { type: String, default: 'CUSTOMER' },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
+    cancellation: {
+      reason: { type: String, default: null },
+      note: { type: String, default: '' },
+      cancelledAt: { type: Date, default: null },
+      cancelledBy: { type: String, default: null },
+    },
     idempotencyKey: {
       type: String,
       index: true,
@@ -178,6 +204,24 @@ const orderSchema = new mongoose.Schema(
         ret.createdAt = ret.createdAt ? ret.createdAt.toISOString() : new Date().toISOString()
         ret.pickupScheduledAt = ret.pickupScheduledAt ? ret.pickupScheduledAt.toISOString() : null
         ret.estimatedDeliveryAt = ret.estimatedDeliveryAt ? ret.estimatedDeliveryAt.toISOString() : null
+
+        // What the customer can still change, worked out on the server's clock.
+        ret.changeRules = getChangeRules(doc)
+        ret.rescheduleCount = ret.rescheduleCount || 0
+        ret.scheduleHistory = (ret.scheduleHistory || []).map((h) => ({
+          from: h.from?.toISOString?.() ?? h.from,
+          to: h.to?.toISOString?.() ?? h.to,
+          changedAt: h.changedAt?.toISOString?.() ?? h.changedAt,
+          changedBy: h.changedBy,
+        }))
+        ret.cancellation = ret.cancellation?.cancelledAt
+          ? {
+              reason: ret.cancellation.reason,
+              note: ret.cancellation.note || '',
+              cancelledAt: ret.cancellation.cancelledAt.toISOString(),
+              cancelledBy: ret.cancellation.cancelledBy,
+            }
+          : null
 
         const priced = ret.items.length > 0 && ret.items.every((i) => i.quantity != null)
         ret.totalPaise = priced

@@ -16,17 +16,26 @@ export function toPickupIso(dateKey, hour) {
   return new Date(y, m - 1, d, hour).toISOString()
 }
 
-function isSlotOpen(dateKey, hour) {
-  return new Date(toPickupIso(dateKey, hour)).getTime() > Date.now() + 60 * 60 * 1000
+function isSlotOpen(dateKey, hour, minLeadMinutes = 60, excludeIso = null, maxAheadDays = null) {
+  const t = new Date(toPickupIso(dateKey, hour)).getTime()
+  if (excludeIso && t === new Date(excludeIso).getTime()) return false
+  if (maxAheadDays != null && t > Date.now() + maxAheadDays * 24 * 60 * 60 * 1000) return false
+  return t > Date.now() + minLeadMinutes * 60 * 1000
 }
 
-export function PickupSchedule({ date, slotHour, onChange, error }) {
+/**
+ * minLeadMinutes: how far ahead a slot must start (rescheduling uses the change cutoff).
+ * excludeIso: a slot to hide (the current pickup when rescheduling).
+ * maxAheadDays: latest a slot can be (rescheduling allows 7 days ahead).
+ */
+export function PickupSchedule({ date, slotHour, onChange, error, minLeadMinutes = 60, excludeIso = null, maxAheadDays = null, hint }) {
+  const open = (key, h) => isSlotOpen(key, h, minLeadMinutes, excludeIso, maxAheadDays)
   const { days, today, tomorrow } = useMemo(() => {
     const list = []
     const start = new Date()
-    for (let i = 0; list.length < 7; i++) {
+    for (let i = 0; list.length < 7 && i < 14; i++) {
       const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
-      if (SLOT_STARTS.some((h) => isSlotOpen(toKey(d), h))) list.push(d)
+      if (SLOT_STARTS.some((h) => isSlotOpen(toKey(d), h, minLeadMinutes, excludeIso, maxAheadDays))) list.push(d)
     }
     const now = new Date()
     return {
@@ -34,7 +43,7 @@ export function PickupSchedule({ date, slotHour, onChange, error }) {
       today: toKey(now),
       tomorrow: toKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)),
     }
-  }, [])
+  }, [minLeadMinutes, excludeIso, maxAheadDays])
 
   return (
     <div className="space-y-5">
@@ -50,7 +59,7 @@ export function PickupSchedule({ date, slotHour, onChange, error }) {
                 type="button"
                 key={key}
                 aria-pressed={selected}
-                onClick={() => onChange({ date: key, slotHour: slotHour != null && isSlotOpen(key, slotHour) ? slotHour : null })}
+                onClick={() => onChange({ date: key, slotHour: slotHour != null && open(key, slotHour) ? slotHour : null })}
                 className={cn(
                   'flex min-w-[4.75rem] shrink-0 flex-col items-center rounded-xl border px-3 py-2.5 transition',
                   selected ? 'border-brand-700 bg-brand-700 text-white shadow-lift' : 'border-line bg-white hover:border-navy-400/50',
@@ -69,13 +78,13 @@ export function PickupSchedule({ date, slotHour, onChange, error }) {
         <legend className="mb-2.5 text-sm font-medium text-navy-700">Time window</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {SLOT_STARTS.map((h) => {
-            const open = date && isSlotOpen(date, h)
-            const selected = slotHour === h && open
+            const isOpen = date && open(date, h)
+            const selected = slotHour === h && isOpen
             return (
               <button
                 type="button"
                 key={h}
-                disabled={!open}
+                disabled={!isOpen}
                 aria-pressed={selected}
                 onClick={() => onChange({ slotHour: h })}
                 className={cn(
@@ -89,7 +98,7 @@ export function PickupSchedule({ date, slotHour, onChange, error }) {
           })}
         </div>
         <p className={cn('mt-3 text-sm', error ? 'font-medium text-red-600' : 'text-navy-500')}>
-          {error ?? (date ? 'This is a requested window — we confirm it by SMS before pickup. Times in IST.' : 'Choose a date first.')}
+          {error ?? (date ? (hint ?? 'This is a requested window — we confirm it by SMS before pickup. Times in IST.') : 'Choose a date first.')}
         </p>
       </fieldset>
     </div>
