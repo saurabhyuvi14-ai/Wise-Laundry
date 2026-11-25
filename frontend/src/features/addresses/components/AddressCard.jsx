@@ -10,7 +10,8 @@ export const ADDRESS_LABELS = { HOME: 'Home', WORK: 'Work', OTHER: 'Other' }
 
 export function formatAddress(a) {
   if (!a) return ''
-  return [a.addressLine1, a.addressLine2, a.city && `${a.city} ${a.postalCode}`].filter(Boolean).join(', ')
+  const cityStatePin = [a.city, a.state, a.postalCode].filter(Boolean).join(' ')
+  return [a.addressLine1, a.addressLine2, cityStatePin].filter(Boolean).join(', ')
 }
 
 const icon = { HOME: Home, WORK: Briefcase, OTHER: MapPin }

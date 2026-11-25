@@ -7,6 +7,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [status, setStatus] = useState('loading') // loading | ready
   const [loggedOut, setLoggedOut] = useState(false) // true right after "Log out"
+  const [justSignedUp, setJustSignedUp] = useState(false)
+
+  const dismissSignupPrompt = useCallback(() => setJustSignedUp(false), [])
 
   useEffect(() => {
     api.me()
@@ -18,6 +21,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     const res = await api.login(credentials)
     setLoggedOut(false)
+    setJustSignedUp(false)
     setUser(res.data)
     return res.data
   }, [])
@@ -25,6 +29,7 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (details) => {
     const res = await api.register(details)
     setLoggedOut(false)
+    setJustSignedUp(true)
     setUser(res.data)
     return res.data
   }, [])
@@ -34,6 +39,7 @@ export function AuthProvider({ children }) {
     const res = await api.googleSignIn(phone ? { credential, phone } : { credential })
     if (res.data.user) {
       setLoggedOut(false)
+      if (phone) setJustSignedUp(true)
       setUser(res.data.user)
     }
     return res.data
@@ -52,6 +58,7 @@ export function AuthProvider({ children }) {
 
   const completeProfile = useCallback(async (details) => {
     const res = await api.updateMe(details)
+    setJustSignedUp(true)
     setUser(res.data)
     return res.data
   }, [])
@@ -63,12 +70,27 @@ export function AuthProvider({ children }) {
       sessionStorage.clear()
     } catch { /* ignore */ }
     setLoggedOut(true)
+    setJustSignedUp(false)
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ user, status, loggedOut, login, register, googleSignIn, requestOtp, verifyOtp, completeProfile, logout, setUser }),
-    [user, status, loggedOut, login, register, googleSignIn, requestOtp, verifyOtp, completeProfile, logout],
+    () => ({
+      user,
+      status,
+      loggedOut,
+      justSignedUp,
+      dismissSignupPrompt,
+      login,
+      register,
+      googleSignIn,
+      requestOtp,
+      verifyOtp,
+      completeProfile,
+      logout,
+      setUser,
+    }),
+    [user, status, loggedOut, justSignedUp, dismissSignupPrompt, login, register, googleSignIn, requestOtp, verifyOtp, completeProfile, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -1,12 +1,89 @@
+import { useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { CustomerSidebar } from '../components/navigation/CustomerSidebar'
 import { MobileNav, MobileTopBar } from '../components/navigation/MobileNavigation'
 import { PageSkeleton } from '../components/ui/Spinner'
+import { Modal } from '../components/ui/Modal'
 import { useAuth } from '../features/auth/hooks/useAuth'
+import { LocationPromptModal } from '../features/addresses/components/LocationPromptModal'
+import { AddressForm } from '../features/addresses/components/AddressForm'
+import { useGeolocation } from '../features/addresses/hooks/useGeolocation'
+import { useToast } from '../components/feedback/Toast'
+import { api } from '../services/api-client'
+
+function SignupLocationSetup({ user, onDone }) {
+  const toast = useToast()
+  const [detectedDraft, setDetectedDraft] = useState(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [serverErrors, setServerErrors] = useState(null)
+  const { detecting, error: geoError, detectLocation, cancel: cancelGeo } = useGeolocation()
+
+  async function handleUseLocation() {
+    const res = await detectLocation()
+    if (res?.cancelled) return
+    if (res?.ok) {
+      setDetectedDraft({ ...res.data, notice: res.notice })
+      setFormOpen(true)
+    }
+  }
+
+  function handleClosePrompt() {
+    cancelGeo()
+    onDone()
+  }
+
+  async function handleSaveAddress(body) {
+    setSaving(true)
+    setServerErrors(null)
+    try {
+      await api.createAddress(body)
+      toast('Pickup address saved')
+      setFormOpen(false)
+      onDone()
+    } catch (err) {
+      if (err.fields) setServerErrors(err.fields)
+      toast(err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <LocationPromptModal
+        open={!formOpen}
+        detecting={detecting}
+        error={geoError}
+        onUseLocation={handleUseLocation}
+        onClose={handleClosePrompt}
+      />
+
+      <Modal
+        open={formOpen}
+        onClose={() => { setFormOpen(false); onDone() }}
+        title="Confirm your pickup address"
+        description="Review the detected details and add your flat or house number before saving."
+      >
+        {formOpen && (
+          <AddressForm
+            detectedLocation={detectedDraft}
+            onSubmit={handleSaveAddress}
+            onCancel={() => { setFormOpen(false); onDone() }}
+            saving={saving}
+            defaultName={user?.fullName}
+            defaultPhone={user?.phone}
+            serverErrors={serverErrors}
+          />
+        )}
+      </Modal>
+    </>
+  )
+}
 
 /** Shell for signed-in customers. UI guard only — the backend still enforces access. */
 export function CustomerLayout() {
-  const { user, status, loggedOut } = useAuth()
+  const { user, status, loggedOut, justSignedUp, dismissSignupPrompt } = useAuth()
   const location = useLocation()
 
   if (status === 'ready' && !user) {
@@ -26,6 +103,7 @@ export function CustomerLayout() {
         </main>
       </div>
       {user && <MobileNav />}
+      {user && justSignedUp && <SignupLocationSetup user={user} onDone={dismissSignupPrompt} />}
     </div>
   )
 }

@@ -88,7 +88,11 @@ const orderSchema = new mongoose.Schema(
       addressLine2Encrypted: String,
       landmark: String,
       city: String,
+      state: String,
       postalCode: String,
+      coordinatesEncrypted: String,
+      locationAccuracyMeters: Number,
+      locationSource: String,
       instructionsEncrypted: String,
     },
     pickupScheduledAt: {
@@ -144,6 +148,14 @@ const orderSchema = new mongoose.Schema(
       transform(doc, ret) {
         ret.id = ret.orderIdString || ret._id.toString()
         if (ret.addressSnapshot) {
+          let coordinates = null
+          if (ret.addressSnapshot.coordinatesEncrypted) {
+            try {
+              coordinates = JSON.parse(decrypt(ret.addressSnapshot.coordinatesEncrypted))
+            } catch {
+              coordinates = null
+            }
+          }
           ret.addressSnapshot = {
             label: ret.addressSnapshot.label,
             recipientName: ret.addressSnapshot.recipientName,
@@ -152,8 +164,12 @@ const orderSchema = new mongoose.Schema(
             addressLine2: decrypt(ret.addressSnapshot.addressLine2Encrypted),
             landmark: ret.addressSnapshot.landmark || '',
             city: ret.addressSnapshot.city,
+            state: ret.addressSnapshot.state || '',
             postalCode: ret.addressSnapshot.postalCode,
             pincode: ret.addressSnapshot.postalCode,
+            coordinates,
+            locationAccuracyMeters: ret.addressSnapshot.locationAccuracyMeters ?? null,
+            locationSource: ret.addressSnapshot.locationSource || 'MANUAL',
             instructions: decrypt(ret.addressSnapshot.instructionsEncrypted) || '',
           }
         }
@@ -187,7 +203,11 @@ orderSchema.methods.setEncryptedAddressSnapshot = function (rawAddress) {
     addressLine2Encrypted: encrypt(rawAddress.addressLine2),
     landmark: rawAddress.landmark || '',
     city: rawAddress.city,
+    state: rawAddress.state || '',
     postalCode: rawAddress.postalCode,
+    coordinatesEncrypted: rawAddress.coordinates ? encrypt(JSON.stringify(rawAddress.coordinates)) : '',
+    locationAccuracyMeters: rawAddress.locationAccuracyMeters ?? null,
+    locationSource: rawAddress.locationSource || 'MANUAL',
     instructionsEncrypted: encrypt(rawAddress.instructions || ''),
   }
 }

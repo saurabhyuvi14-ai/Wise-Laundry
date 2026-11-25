@@ -42,6 +42,26 @@ export const updateMeSchema = z.object({
   fullName: data.fullName || data.name,
 }))
 
+const coordinatesSchema = z
+  .object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  })
+  .nullable()
+  .optional()
+
+export const reverseGeocodeSchema = z.object({
+  lat: z.coerce.number().min(-90, 'Invalid latitude').max(90, 'Invalid latitude'),
+  lng: z.coerce.number().min(-180, 'Invalid longitude').max(180, 'Invalid longitude'),
+})
+
+export const geocodeAddressSchema = z.object({
+  addressLine2: z.string().trim().max(200).optional().default(''),
+  city: z.string().trim().min(2, 'City is required').max(100),
+  state: z.string().trim().max(100).optional().default(''),
+  postalCode: z.string().trim().max(12).optional().default(''),
+})
+
 export const addressSchema = z.object({
   label: z.enum(['HOME', 'WORK', 'OTHER']).default('HOME'),
   recipientName: z.string().trim().min(2, 'Contact name is required').max(100),
@@ -50,8 +70,12 @@ export const addressSchema = z.object({
   addressLine2: z.string().trim().min(2, 'Street/area is required').max(200),
   landmark: z.string().trim().max(150).optional().default(''),
   city: z.string().trim().min(2, 'City is required').max(100).default('Bengaluru'),
+  state: z.string().trim().max(100).optional().default(''),
   postalCode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
   pincode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
+  coordinates: coordinatesSchema,
+  locationAccuracyMeters: z.number().nonnegative().nullable().optional(),
+  locationSource: z.enum(['GEOLOCATION', 'GEOCODED', 'MANUAL']).optional().default('MANUAL'),
   instructions: z.string().trim().max(300).optional().default(''),
   isDefault: z.boolean().optional().default(false),
 }).transform((data) => ({
@@ -70,8 +94,12 @@ export const updateAddressSchema = z.object({
   addressLine2: z.string().trim().min(2, 'Street/area is required').max(200).optional(),
   landmark: z.string().trim().max(150).optional(),
   city: z.string().trim().min(2, 'City is required').max(100).optional(),
+  state: z.string().trim().max(100).optional(),
   postalCode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
   pincode: z.string().trim().regex(postalCodeRegex, 'Pincode must be 6 digits').optional(),
+  coordinates: coordinatesSchema,
+  locationAccuracyMeters: z.number().nonnegative().nullable().optional(),
+  locationSource: z.enum(['GEOLOCATION', 'GEOCODED', 'MANUAL']).optional(),
   instructions: z.string().trim().max(300).optional(),
   isDefault: z.boolean().optional(),
 }).transform((data) => ({

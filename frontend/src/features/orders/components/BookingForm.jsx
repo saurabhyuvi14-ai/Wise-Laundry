@@ -32,7 +32,7 @@ export function BookingStep({ number, title, optional, done, children, action })
 }
 
 export function BookingForm() {
-  const { draft, update, services, addresses, service, address, scheduled, stepsDone, submitting, errors, submit } = useBooking()
+  const { draft, update, services, addresses, reloadAddresses, service, address, scheduled, stepsDone, submitting, errors, submit } = useBooking()
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -53,6 +53,7 @@ export function BookingForm() {
             loading={addresses.loading}
             value={draft.addressId}
             onChange={(addressId) => update({ addressId })}
+            onReloadAddresses={reloadAddresses}
             error={errors.addressId}
           />
         </BookingStep>

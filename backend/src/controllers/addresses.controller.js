@@ -1,5 +1,12 @@
 import * as addressService from '../services/address.service.js'
-import { addressSchema, updateAddressSchema, validate } from '../utils/validation.js'
+import * as locationService from '../services/location.service.js'
+import {
+  addressSchema,
+  updateAddressSchema,
+  reverseGeocodeSchema,
+  geocodeAddressSchema,
+  validate,
+} from '../utils/validation.js'
 
 export async function listAddresses(req, res, next) {
   try {
@@ -34,6 +41,26 @@ export async function deleteAddress(req, res, next) {
   try {
     await addressService.deleteAddress(req.user._id, req.params.id)
     return res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function reverseGeocode(req, res, next) {
+  try {
+    const { lat, lng } = validate(reverseGeocodeSchema, req.body)
+    const result = await locationService.reverseGeocode(lat, lng)
+    return res.json({ data: result })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function geocodeAddress(req, res, next) {
+  try {
+    const data = validate(geocodeAddressSchema, req.body)
+    const result = await locationService.geocodeAddress(data)
+    return res.json({ data: result })
   } catch (err) {
     next(err)
   }

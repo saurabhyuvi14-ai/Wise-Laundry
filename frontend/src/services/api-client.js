@@ -72,6 +72,8 @@ export const laundryApi = {
   createAddress: (body) => apiClient('/addresses', { method: 'POST', body }),
   updateAddress: (id, body) => apiClient(`/addresses/${id}`, { method: 'PATCH', body }),
   deleteAddress: (id) => apiClient(`/addresses/${id}`, { method: 'DELETE' }),
+  reverseGeocode: (body) => apiClient('/addresses/reverse-geocode', { method: 'POST', body }),
+  geocodeAddress: (body) => apiClient('/addresses/geocode', { method: 'POST', body }),
 
   // orders
   createOrder: (body, idempotencyKey) =>

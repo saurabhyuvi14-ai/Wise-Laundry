@@ -2,6 +2,7 @@ import { Order } from '../models/Order.js'
 import { Address } from '../models/Address.js'
 import { Service } from '../models/Service.js'
 import { reserveSlot, releaseSlot } from './slot.service.js'
+import { assertServiceArea } from './location.service.js'
 import { enforceOwnership } from '../middleware/auth.js'
 import { ApiError } from '../utils/errors.js'
 
@@ -40,7 +41,7 @@ export async function createOrder(userId, data, idempotencyKey) {
       })
     }
 
-    // 2. Validate address and ownership
+    // 2. Validate address, ownership, and service-area availability
     const address = await Address.findById(data.addressId)
     if (!address) {
       throw ApiError.badRequest('Pickup address not found.', {
@@ -48,6 +49,13 @@ export async function createOrder(userId, data, idempotencyKey) {
       })
     }
     enforceOwnership(address.userId, userId)
+
+    const addressSnapshot = address.getDecryptedSnapshot()
+    assertServiceArea({
+      coordinates: addressSnapshot.coordinates,
+      city: addressSnapshot.city,
+      postalCode: addressSnapshot.postalCode,
+    })
 
     // 3. Atomically validate and reserve pickup slot capacity
     const pickupDate = new Date(data.pickupScheduledAt)
@@ -90,7 +98,6 @@ export async function createOrder(userId, data, idempotencyKey) {
       currency: 'INR',
     })
 
-    const addressSnapshot = address.getDecryptedSnapshot()
     order.setEncryptedAddressSnapshot(addressSnapshot)
     order.setEncryptedInstructions(data.instructions)
 

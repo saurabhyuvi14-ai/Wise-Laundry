@@ -160,6 +160,24 @@ The integration architecture follows a decoupled, secure client-server design wi
 #### `DELETE /api/v1/addresses/:id`
 - **Description:** Deletes address. Automatically re-assigns default status to next address if deleted address was default.
 
+#### `POST /api/v1/addresses/reverse-geocode`
+- **Request Body:** `{ "lat": 12.9121, "lng": 77.6446 }`
+- **Description:** Calls the configured reverse-geocoding provider (`GEOCODING_PROVIDER`) server-side and returns normalized `addressLine2`, `city`, `state`, `postalCode`, `coordinates`, and `serviceArea: { supported, message }`.
+
+#### `POST /api/v1/addresses/geocode`
+- **Request Body:** `{ "addressLine2": "...", "city": "Bengaluru", "state": "Karnataka", "postalCode": "560102" }`
+- **Description:** Forward-geocodes a customer-edited address when refreshing a stale location pin, returning `{ coordinates, serviceArea }`.
+
+### Geocoding Provider, API Setup, Usage Costs & Storage Terms
+- **Default Provider (`GEOCODING_PROVIDER=nominatim`)**: Uses OpenStreetMap Nominatim (`nominatim.openstreetmap.org`).
+  - **API Setup**: No API key required; configure `GEOCODING_USER_AGENT` in `backend/.env`.
+  - **Usage Costs**: Free for low-volume interactive lookups (subject to OSM Nominatim's 1 request/second fair-use limit and User-Agent identification policy).
+  - **Storage Terms**: Only the customer-confirmed address fields and encrypted coordinates are persisted in MongoDB Atlas; raw provider responses are discarded and coordinates are redacted from logs.
+- **Optional Production Provider (`GEOCODING_PROVIDER=google`)**: Uses Google Maps Geocoding API.
+  - **API Setup**: Enable the Geocoding API in Google Cloud Console and set `GOOGLE_MAPS_API_KEY` in `backend/.env` (server-side only; never exposed to client).
+  - **Usage Costs**: Pay-as-you-go per Google Maps Platform pricing (includes monthly free tier credit).
+  - **Storage Terms**: Coordinates and place details are persisted in encrypted form (`coordinatesEncrypted`) solely for pickup/delivery fulfillment.
+
 ---
 
 ### Services Catalogue & Slot Availability Endpoints
@@ -288,6 +306,13 @@ The integration architecture follows a decoupled, secure client-server design wi
    - RFC 6238 Time-based One-Time Password (TOTP) required for Admin & Staff accounts before accessing the portal.
 4. **Immutable Audit Trail:**
    - Every status transition creates an immutable `AuditLog` entry recording `operatorId`, `orderId`, `fromStatus`, `toStatus`, `metadata` (weights, count), `ipAddress`, and `timestamp`.
+5. **Future "Get Directions" Action for Assigned Delivery Staff:**
+   - In the future delivery portal, an assigned `STAFF_DRIVER` receives a **"Get Directions"** button on active pickup/delivery tasks.
+   - **Primary destination**: Opens Google Maps using the order's immutable confirmed pickup coordinates:  
+     `https://www.google.com/maps/dir/?api=1&destination=<lat>,<lng>`
+   - **Fallback destination**: If `addressSnapshot.coordinates` is `null` (e.g. manual address entry), falls back to the URL-encoded written address:  
+     `https://www.google.com/maps/dir/?api=1&destination=<encoded_address_line1_line2_city_postalCode>`
+   - **Access Control**: Destination coordinates and written address snapshots are served **only** to the authenticated staff member whose ID matches `order.assignedStaffId` (or an MFA-verified `ADMIN`). Unassigned staff receive `403 Forbidden`.
 
 ---
 

@@ -25,6 +25,16 @@ const envSchema = z.object({
     .optional()
     .default('')
     .transform((v) => v.trim().replace(/^["']|["']$/g, '').trim()),
+  // Location & Reverse-Geocoding
+  GEOCODING_PROVIDER: z.enum(['nominatim', 'google']).default('nominatim'),
+  GOOGLE_MAPS_API_KEY: z.string().optional().default(''),
+  GEOCODING_USER_AGENT: z.string().default('WiseLaundry/1.0 (support@wiselaundry.in)'),
+  // Service Area Availability
+  SERVICE_AREA_CITIES: z.string().default('Bengaluru,Bangalore'),
+  SERVICE_AREA_PINCODE_PREFIXES: z.string().default('560'),
+  SERVICE_AREA_CENTER_LAT: z.coerce.number().default(12.9716),
+  SERVICE_AREA_CENTER_LNG: z.coerce.number().default(77.5946),
+  SERVICE_AREA_RADIUS_KM: z.coerce.number().default(35),
 })
 
 let parsed = envSchema.safeParse(process.env)
