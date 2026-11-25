@@ -125,6 +125,18 @@ export const createOrderSchema = z.object({
   instructions: z.string().trim().max(500).optional().default(''),
 })
 
+export const cancelOrderSchema = z.object({
+  reason: z.enum(['CHANGE_OF_PLANS', 'NOT_AVAILABLE_AT_PICKUP', 'BOOKED_BY_MISTAKE', 'WANT_DIFFERENT_SERVICE', 'OTHER'], {
+    errorMap: () => ({ message: 'Choose a reason.' }),
+  }),
+  note: z.string().trim().max(300).optional().default(''),
+})
+
+export const rescheduleOrderSchema = z.object({
+  pickupScheduledAt: z.string().refine((val) => !isNaN(new Date(val).getTime()), 'Pick a valid time.'),
+  pickupSlotHours: z.number().min(1).max(6).optional(),
+})
+
 export const listOrdersQuerySchema = z.object({
   status: z.enum(['all', 'active', 'past']).default('all'),
   page: z.coerce.number().int().min(1).default(1),

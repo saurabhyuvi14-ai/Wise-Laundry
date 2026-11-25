@@ -1,6 +1,6 @@
 import * as bookingService from '../services/booking.service.js'
 import * as trackingService from '../services/tracking.service.js'
-import { createOrderSchema, listOrdersQuerySchema, validate } from '../utils/validation.js'
+import { createOrderSchema, listOrdersQuerySchema, cancelOrderSchema, rescheduleOrderSchema, validate } from '../utils/validation.js'
 
 export async function createOrder(req, res, next) {
   try {
@@ -51,3 +51,23 @@ export async function advanceOrder(req, res, next) {
   }
 }
 
+
+export async function cancelOrder(req, res, next) {
+  try {
+    const data = validate(cancelOrderSchema, req.body)
+    const order = await bookingService.cancelOrder(req.user._id, req.params.id, data)
+    return res.json({ data: order })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function rescheduleOrder(req, res, next) {
+  try {
+    const data = validate(rescheduleOrderSchema, req.body)
+    const order = await bookingService.rescheduleOrder(req.user._id, req.params.id, data)
+    return res.json({ data: order })
+  } catch (err) {
+    next(err)
+  }
+}

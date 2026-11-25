@@ -1,0 +1,51 @@
+import { config } from '../config/env.js'
+
+const MINUTE = 60 * 1000
+
+export const CANCEL_REASONS = [
+  'CHANGE_OF_PLANS',
+  'NOT_AVAILABLE_AT_PICKUP',
+  'BOOKED_BY_MISTAKE',
+  'WANT_DIFFERENT_SERVICE',
+  'OTHER',
+]
+
+export function policySettings() {
+  return {
+    cutoffMinutes: config?.ORDER_CHANGE_CUTOFF_MINUTES ?? 120,
+    maxReschedules: config?.ORDER_MAX_RESCHEDULES ?? 2,
+    rescheduleMaxDays: config?.ORDER_RESCHEDULE_MAX_DAYS ?? 7,
+  }
+}
+
+/** Latest moment the customer can still change this pickup. */
+export function changeDeadline(pickupScheduledAt) {
+  return new Date(new Date(pickupScheduledAt).getTime() - policySettings().cutoffMinutes * MINUTE)
+}
+
+/**
+ * What the customer may do with this order right now.
+ * blockedReason: null | 'NOT_BOOKED' | 'TOO_LATE' | 'RESCHEDULE_LIMIT'
+ */
+export function getChangeRules(order, now = new Date()) {
+  const { maxReschedules, cutoffMinutes } = policySettings()
+  const deadline = order.pickupScheduledAt ? changeDeadline(order.pickupScheduledAt) : null
+  const used = order.rescheduleCount || 0
+  const reschedulesLeft = Math.max(0, maxReschedules - used)
+
+  let blockedReason = null
+  if (order.currentStatus !== 'BOOKED') blockedReason = 'NOT_BOOKED'
+  else if (!deadline || now >= deadline) blockedReason = 'TOO_LATE'
+
+  const canCancel = blockedReason === null
+  const canReschedule = canCancel && reschedulesLeft > 0
+
+  return {
+    canCancel,
+    canReschedule,
+    changeDeadline: deadline ? deadline.toISOString() : null,
+    reschedulesLeft,
+    cutoffMinutes,
+    blockedReason: blockedReason || (canReschedule ? null : 'RESCHEDULE_LIMIT'),
+  }
+}

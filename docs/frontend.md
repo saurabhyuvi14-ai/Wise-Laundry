@@ -5,6 +5,32 @@
 
 ---
 
+## 25 Nov 2026 — Reschedule and cancel a pickup
+
+**Branch:** `feature/reschedule-cancel`
+
+### Rules (the server enforces all of them, on its own clock)
+- Customers can **reschedule or cancel until 2 hours before the pickup window starts**. After that the order page says "Changes closed" and points to support.
+- Once the clothes are **picked up**, the order can't be changed in the app.
+- **Reschedule:** at most **2 times** per order. The new slot must be at least 2 hours away, within the next 7 days, not the current slot, and must have room.
+- **Cancel:** the customer picks a reason (plans changed, not home, booked by mistake, different service, something else) and can add a note. Pressing cancel twice is harmless.
+- Every change is recorded on the order: `scheduleHistory` (old slot, new slot, when, by whom) and `cancellation` (reason, note, when, by whom). A cancelled or moved pickup frees its slot for someone else.
+- Settings in `backend/.env`: `ORDER_CHANGE_CUTOFF_MINUTES=120`, `ORDER_MAX_RESCHEDULES=2`, `ORDER_RESCHEDULE_MAX_DAYS=7`.
+
+### Website
+- Order page: new **Change this pickup** card with the deadline, **Reschedule** and **Cancel pickup**, and how many reschedules are left.
+- Reschedule opens the same date and time picker as booking, showing only slots that are allowed.
+- Cancel asks for a reason and a final confirm. A cancelled order shows when and why.
+
+### For the backend
+- `POST /orders/:id/cancel` with `{ reason, note? }`
+- `POST /orders/:id/reschedule` with `{ pickupScheduledAt, pickupSlotHours? }`
+- Every order now includes `changeRules: { canCancel, canReschedule, changeDeadline, reschedulesLeft, cutoffMinutes, blockedReason }`.
+- Error codes: `ORDER_CHANGE_TOO_LATE`, `ORDER_ALREADY_PICKED_UP`, `ORDER_ALREADY_CANCELLED`, `RESCHEDULE_LIMIT_REACHED`, `ORDER_CHANGED`.
+- Tests: `backend/tests/order-changes.test.js` (11 tests).
+
+---
+
 ## 18 Nov 2026 — Backend on Vercel, so the live site works
 
 **Branch:** `feature/vercel-backend` (on top of `feature/google-sign-in`)

@@ -19,6 +19,12 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(20),
   DEFAULT_SLOT_CAPACITY: z.coerce.number().default(5),
+  // Customers can cancel or reschedule until this many minutes before the pickup window starts.
+  ORDER_CHANGE_CUTOFF_MINUTES: z.coerce.number().int().min(0).default(120),
+  // How many times one order can be rescheduled.
+  ORDER_MAX_RESCHEDULES: z.coerce.number().int().min(0).default(2),
+  // How far ahead a rescheduled pickup can be.
+  ORDER_RESCHEDULE_MAX_DAYS: z.coerce.number().int().min(1).default(7),
   // OAuth client ID from Google Cloud Console. Leave empty to switch Google sign-in off.
   GOOGLE_CLIENT_ID: z
     .string()
