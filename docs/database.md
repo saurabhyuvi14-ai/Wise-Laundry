@@ -102,7 +102,11 @@ Saved pickup and delivery addresses with AES-256-GCM managed field encryption.
   addressLine2Encrypted: { type: String, required: true }, // v1:iv:tag:ciphertext
   landmark: { type: String, default: '', trim: true },
   city: { type: String, required: true, trim: true, default: 'Bengaluru' },
+  state: { type: String, trim: true, default: 'Karnataka' },
   postalCode: { type: String, required: true, trim: true },
+  coordinatesEncrypted: { type: String, default: '' },    // v1:iv:tag:ciphertext (JSON { lat, lng })
+  locationAccuracyMeters: { type: Number, default: null },
+  locationSource: { type: String, enum: ['GEOLOCATION', 'GEOCODED', 'MANUAL'], default: 'MANUAL' },
   instructionsEncrypted: { type: String, default: '' },    // v1:iv:tag:ciphertext
   isDefault: { type: Boolean, default: false },
   createdAt: Date,
@@ -170,7 +174,11 @@ Customer bookings, status history, and immutable encrypted address snapshots.
     addressLine2Encrypted: String,
     landmark: String,
     city: String,
+    state: String,
     postalCode: String,
+    coordinatesEncrypted: String,
+    locationAccuracyMeters: Number,
+    locationSource: String,
     instructionsEncrypted: String
   },
   pickupScheduledAt: { type: Date, required: true, index: true },

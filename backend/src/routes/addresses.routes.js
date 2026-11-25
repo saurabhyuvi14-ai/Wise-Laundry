@@ -10,6 +10,8 @@ router.use(privateCacheControl)
 
 router.get('/', addressesController.listAddresses)
 router.post('/', addressesController.createAddress)
+router.post('/reverse-geocode', addressesController.reverseGeocode)
+router.post('/geocode', addressesController.geocodeAddress)
 router.patch('/:id', addressesController.updateAddress)
 router.delete('/:id', addressesController.deleteAddress)
 

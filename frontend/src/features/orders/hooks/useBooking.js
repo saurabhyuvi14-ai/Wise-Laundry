@@ -59,5 +59,18 @@ export function useBooking() {
     }
   }
 
-  return { draft, update, services, addresses, service, address, scheduled, stepsDone, submitting, errors, submit }
+  return {
+    draft,
+    update,
+    services,
+    addresses,
+    reloadAddresses: addresses.reload,
+    service,
+    address,
+    scheduled,
+    stepsDone,
+    submitting,
+    errors,
+    submit,
+  }
 }
