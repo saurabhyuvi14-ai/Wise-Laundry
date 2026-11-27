@@ -16,6 +16,7 @@ import { OrderChanges } from '../features/orders/components/OrderChanges'
 import { OrderBill } from '../features/orders/components/OrderBill'
 import { useToast } from '../components/feedback/Toast'
 import { BookAgainButton } from '../features/orders/components/BookAgainButton'
+import { OrderFeedback } from '../features/orders/components/OrderFeedback'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
@@ -58,6 +59,7 @@ export default function OrderDetailsPage() {
 
       <div className="grid animate-fade-up gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
+          <OrderFeedback order={order} onSaved={onChanged} />
           <Card className="flex items-center gap-4 border-brand-200 bg-brand-50/40 p-5">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-700 text-white">
               {(() => { const I = STATUS[order.currentStatus]?.icon; return I && <I className="size-5" /> })()}

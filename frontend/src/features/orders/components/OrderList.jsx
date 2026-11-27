@@ -4,8 +4,8 @@ import { OrderCard } from './OrderCard'
 export function OrderList({ orders }) {
   return (
     <ul className="divide-y divide-line/70">
-      {orders.map((o) => (
-        <li key={o.id}>
+      {orders.map((o, i) => (
+        <li key={o.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
           <OrderCard order={o} />
         </li>
       ))}

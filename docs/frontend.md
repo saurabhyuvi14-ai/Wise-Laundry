@@ -5,6 +5,26 @@
 
 ---
 
+## 27 Nov 2026 — Updates (notifications), rating after delivery, animations
+
+**Branch:** `feature/notifications-rating-polish`
+
+### What customers get
+- **Updates bell** — in the side menu and the phone top bar, with a red count of new updates. Every step of every order (picked up, washing, delivered, pickup moved…) shows on the new **Updates** page (`/customer/notifications`), grouped Today / Yesterday / Earlier. Opening it clears the count. While the app is open it checks every 45 seconds; when something new comes in, a toast pops up and the bell wiggles.
+- **Rate your order** — delivered orders get a "How was your laundry?" card: tap 1–5 stars, pick quick tags (good ones for 4–5 stars, problem ones for 1–3), add a comment. Customers can also **report a problem** (item missing, damaged, stains, someone else's items, late, wrong bill, other) in the same card. One rating per order. The dashboard asks "How was order WL-…?" for the latest unrated delivery; tapping a star opens the order with that rating already picked.
+- **Animations** — tracker lines fill in step by step and the ticks pop in; order lists and updates slide in one by one; dashboard numbers count up; stat tiles lift on hover. All of it turns off for people who have "reduce motion" on.
+
+### Backend
+- `GET /api/v1/notifications` (feed built from order history, last 30 days) and `POST /api/v1/notifications/seen`. User gets `notificationsSeenAt`.
+- `POST /api/v1/orders/:id/feedback` — only when DELIVERED, only once (409 otherwise). Order gets `feedback { rating, tags, comment, issue, createdAt }`.
+- Tests: `tests/feedback-notifications.test.js`. **Redeploy the backend.**
+
+### Files
+- New: `context/NotificationsContext.jsx`, `features/notifications/components/NotificationBell.jsx`, `pages/NotificationsPage.jsx`, `features/orders/components/OrderFeedback.jsx`
+- Changed: `CustomerLayout.jsx`, `CustomerSidebar.jsx`, `MobileNavigation.jsx`, `OrderDetailsPage.jsx`, `DashboardPage.jsx`, `TrackingStep.jsx`, `TrackingTimeline.jsx`, `OrderList.jsx`, `styles/index.css`, `api-client.js`, `app/router.jsx`
+
+---
+
 ## 27 Nov 2026 — Tracking: skipped-step fix and order slider
 
 **Branch:** `feature/customer-quick-wins`

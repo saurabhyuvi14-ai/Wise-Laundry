@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, ChevronRight, PackageOpen, RotateCcw, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, PackageOpen, RotateCcw, Sparkles, Star } from 'lucide-react'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { useOrders } from '../features/orders/hooks/useOrders'
 import { OrderList } from '../features/orders/components/OrderList'
@@ -82,6 +83,54 @@ function NextPickupCard({ order }) {
   )
 }
 
+/** Counts up from 0 to `value` once, for the little stat tiles. */
+function useCountUp(value, ms = 600) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    if (!value) return setShown(0)
+    let frame
+    const start = performance.now()
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / ms)
+      setShown(Math.round(value * (1 - (1 - p) ** 3)))
+      if (p < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [value, ms])
+  return shown
+}
+
+function StatTile({ label, value, loading }) {
+  const n = useCountUp(loading ? 0 : value)
+  return (
+    <Card className="px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-md sm:px-6">
+      <p className="text-xs font-medium text-navy-500 sm:text-sm">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold tabular-nums">{loading ? '–' : n}</p>
+    </Card>
+  )
+}
+
+/** Asks for a rating on the latest delivered order that hasn't been rated. Tapping a star opens the order with it picked. */
+function RatePrompt({ order }) {
+  const [hover, setHover] = useState(0)
+  return (
+    <Card className="flex flex-wrap items-center gap-x-4 gap-y-2 border-amber-200 bg-gradient-to-r from-amber-50/70 to-white p-5">
+      <div className="min-w-0 flex-1">
+        <p className="font-bold">How was order {order.reference}?</p>
+        <p className="text-sm text-navy-500">Tap a star. It takes 5 seconds.</p>
+      </div>
+      <div className="flex gap-0.5" aria-label={`Rate order ${order.reference}`} onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Link key={n} to={`/customer/orders/${order.id}?rate=${n}`} onMouseEnter={() => setHover(n)} onFocus={() => setHover(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`} className="rounded-lg p-0.5 transition hover:scale-110 active:scale-95">
+            <Star className={`size-7 text-amber-400 transition ${n <= hover ? 'fill-amber-400' : ''}`} strokeWidth={1.75} aria-hidden />
+          </Link>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 /** One-tap repeat of the customer's most recent order (same service, address and instructions). */
 function BookUsualCard({ order }) {
   const a = order.addressSnapshot || {}
@@ -110,6 +159,7 @@ export default function DashboardPage() {
   const nextPickup = active
     .filter((o) => o.currentStatus === 'BOOKED' && new Date(o.pickupScheduledAt) > new Date())
     .sort((a, b) => new Date(a.pickupScheduledAt) - new Date(b.pickupScheduledAt))[0]
+  const toRate = list.filter((o) => o.currentStatus === 'DELIVERED' && !o.feedback).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]
   const lastOrder = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
   const serviceOf = (o) => services.data?.find((s) => s.id === o?.items[0].serviceId)
 
@@ -139,6 +189,10 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {!orders.loading && toRate && (
+            <div className="animate-fade-up" style={{ animationDelay: '80ms' }}><RatePrompt order={toRate} /></div>
+          )}
+
           {!orders.loading && lastOrder && (
             <div className="animate-fade-up" style={{ animationDelay: '90ms' }}><BookUsualCard order={lastOrder} /></div>
           )}
@@ -148,12 +202,7 @@ export default function DashboardPage() {
               ['Active', active.length],
               ['Completed', list.filter((o) => o.currentStatus === 'DELIVERED').length],
               ['Total orders', list.length],
-            ].map(([label, value]) => (
-              <Card key={label} className="px-4 py-4 sm:px-6">
-                <p className="text-xs font-medium text-navy-500 sm:text-sm">{label}</p>
-                <p className="mt-1 text-2xl font-extrabold">{orders.loading ? '–' : value}</p>
-              </Card>
-            ))}
+            ].map(([label, value]) => <StatTile key={label} label={label} value={value} loading={orders.loading} />)}
           </div>
 
           <Card className="animate-fade-up" style={{ animationDelay: '180ms' }}>

@@ -28,6 +28,7 @@ export function TrackingTimeline({ service, history, currentStatus }) {
             state={state}
             changedAt={reached.get(status)}
             isLast={i === visible.length - 1}
+            index={i}
           />
         )
       })}

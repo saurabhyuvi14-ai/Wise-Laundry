@@ -4,13 +4,15 @@ import { customerNav, activeNavItem, BOOK_PATH, BookIcon } from './CustomerSideb
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { cn } from '../../utils/cn'
+import { NotificationBell } from '../../features/notifications/components/NotificationBell'
 
 export function MobileTopBar() {
   const { user } = useAuth()
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:hidden">
       <Logo to="/customer" className="[&_span]:text-[15px] [&_svg]:size-8" />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        <NotificationBell />
         <Link to="/customer/help" aria-label="Help and support" className="grid size-9 place-items-center rounded-full text-navy-700 hover:bg-canvas">
           <LifeBuoy className="size-5" aria-hidden />
         </Link>

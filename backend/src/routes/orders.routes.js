@@ -14,6 +14,7 @@ router.get('/:id', ordersController.getOrder)
 router.get('/:id/tracking', ordersController.getTracking)
 router.post('/:id/cancel', ordersController.cancelOrder)
 router.post('/:id/reschedule', ordersController.rescheduleOrder)
+router.post('/:id/feedback', ordersController.submitFeedback)
 router.post('/:id/advance', ordersController.advanceOrder)
 
 export default router

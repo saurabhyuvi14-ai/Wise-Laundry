@@ -42,6 +42,7 @@ const routes = [
       { path: 'orders/:orderId/tracking', element: page(() => import('../pages/LiveTrackingPage')) },
       { path: 'tracking', element: page(() => import('../pages/LiveTrackingPage').then((m) => ({ default: m.TrackingLatest }))) },
       { path: 'profile', element: page(() => import('../pages/ProfilePage')) },
+      { path: 'notifications', element: page(() => import('../pages/NotificationsPage')) },
       { path: 'help', element: page(() => import('../pages/HelpPage')) },
       { path: 'addresses', element: page(() => import('../pages/AddressesPage')) },
       { path: '*', element: <Navigate to="/customer" replace /> },
