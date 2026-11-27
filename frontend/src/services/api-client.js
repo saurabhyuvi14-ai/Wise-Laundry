@@ -86,6 +86,7 @@ export const laundryApi = {
   cancelOrder: (id, body) => apiClient(`/orders/${id}/cancel`, { method: 'POST', body }),
   rescheduleOrder: (id, body) => apiClient(`/orders/${id}/reschedule`, { method: 'POST', body }),
   getTracking: (id, signal) => apiClient(`/orders/${id}/tracking`, { signal }),
+  setExpress: (id, body) => apiClient(`/orders/${id}/express`, { method: 'POST', body }),
   submitFeedback: (id, body) => apiClient(`/orders/${id}/feedback`, { method: 'POST', body }),
 
   // updates feed (built from order status changes)

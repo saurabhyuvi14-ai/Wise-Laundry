@@ -4,6 +4,15 @@ import { ApiError } from '../utils/errors.js'
 const UNIT_WORD = { KG: 'kg', PIECE: 'items' }
 const rupees = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
 
+/** Express settings for one service, or null if express isn't offered for it. */
+export function expressFor(service) {
+  if (!config?.EXPRESS_ENABLED || !service) return null
+  const hours = Math.min(config.EXPRESS_TURNAROUND_HOURS ?? 24, Math.ceil((service.turnaroundHours || 48) / 2))
+  // No point offering express if it isn't actually faster.
+  if (hours >= (service.turnaroundHours || 48)) return null
+  return { turnaroundHours: hours, surchargePercent: config.EXPRESS_SURCHARGE_PERCENT ?? 50 }
+}
+
 /** The bill can be written or corrected from pickup until the order leaves for delivery. */
 export const BILLABLE_STATUSES = ['PICKED_UP', 'RECEIVED', 'WASHING', 'IRONING', 'READY_FOR_DELIVERY']
 
@@ -23,7 +32,7 @@ export function validateQuantity(pricingUnit, quantity) {
  * Works out the final bill for one service line, plus the optional extras from settings.
  * Returns { lines: [{ label, detail, amountPaise }], subtotalPaise, totalPaise }.
  */
-export function computeBill(item, quantity) {
+export function computeBill(item, quantity, { express = null } = {}) {
   const minOrder = config?.BILL_MIN_ORDER_PAISE || 0
   const deliveryFee = config?.BILL_DELIVERY_FEE_PAISE || 0
   const freeAbove = config?.BILL_FREE_DELIVERY_ABOVE_PAISE || 0
@@ -39,6 +48,11 @@ export function computeBill(item, quantity) {
   ]
 
   let subtotal = serviceAmount
+  if (express?.surchargePercent > 0) {
+    const extra = Math.round((serviceAmount * express.surchargePercent) / 100)
+    lines.push({ label: 'Express delivery', detail: `+${express.surchargePercent}% for faster delivery`, amountPaise: extra })
+    subtotal += extra
+  }
   if (minOrder > 0 && subtotal < minOrder) {
     lines.push({ label: 'Minimum order top-up', detail: `Orders are at least ${rupees(minOrder)}`, amountPaise: minOrder - subtotal })
     subtotal = minOrder
@@ -62,4 +76,14 @@ export function computeBill(item, quantity) {
   }
 
   return { lines, subtotalPaise: subtotal, totalPaise: total }
+}
+
+/** The express terms saved on an order (null for standard). */
+export function orderExpress(order) {
+  return order?.express?.enabled ? { surchargePercent: order.express.surchargePercent || 0, turnaroundHours: order.express.turnaroundHours } : null
+}
+
+/** Delivery time for an order: its saved express hours, otherwise the service's normal time. */
+export function orderTurnaroundHours(order, service) {
+  return orderExpress(order)?.turnaroundHours || service?.turnaroundHours || 48
 }

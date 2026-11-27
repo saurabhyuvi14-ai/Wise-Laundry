@@ -1,4 +1,4 @@
-import { getChangeRules } from '../services/orderPolicy.js'
+import { getChangeRules, getExpressRules } from '../services/orderPolicy.js'
 import mongoose from 'mongoose'
 import { encrypt, decrypt } from '../utils/crypto.js'
 
@@ -80,6 +80,12 @@ const orderSchema = new mongoose.Schema(
     items: {
       type: [orderItemSchema],
       required: true,
+    },
+    // Express delivery, with the terms the customer saw when booking (so later setting changes don't affect it).
+    express: {
+      enabled: { type: Boolean, default: false },
+      surchargePercent: { type: Number, default: 0 },
+      turnaroundHours: { type: Number, default: null },
     },
     // The saved address used to book (the snapshot below keeps the address as it was).
     addressId: {
@@ -240,6 +246,7 @@ const orderSchema = new mongoose.Schema(
 
         // What the customer can still change, worked out on the server's clock.
         ret.changeRules = getChangeRules(doc)
+        ret.expressRules = getExpressRules(doc)
         ret.rescheduleCount = ret.rescheduleCount || 0
         ret.scheduleHistory = (ret.scheduleHistory || []).map((h) => ({
           from: h.from?.toISOString?.() ?? h.from,
@@ -247,6 +254,9 @@ const orderSchema = new mongoose.Schema(
           changedAt: h.changedAt?.toISOString?.() ?? h.changedAt,
           changedBy: h.changedBy,
         }))
+        ret.express = ret.express?.enabled
+          ? { surchargePercent: ret.express.surchargePercent, turnaroundHours: ret.express.turnaroundHours }
+          : null
         ret.feedback = ret.feedback?.createdAt
           ? {
               rating: ret.feedback.rating,

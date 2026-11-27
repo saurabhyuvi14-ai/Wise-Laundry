@@ -5,6 +5,20 @@
 
 ---
 
+## 27 Nov 2026 — Express delivery
+
+**Branch:** `feature/express-delivery`
+
+- **Booking:** after picking a service, customers choose **Standard** (normal time, no extra) or **Express** (faster, extra charge). Shown only for services where express is actually faster. The booking summary shows the choice.
+- **Default rules:** express = half the normal time, at most 24 hours (Wash & Fold / Wash & Iron: 2 days → 1 day; Iron Only: 1 day → 12 hours), for +50% on the washing amount. The terms are saved on the order when booking, so later setting changes don't change old orders.
+- **Bill:** an "Express delivery" line is added when staff weigh the order, and the delivery estimate uses the express time.
+- **Shown in:** order list (Express tag), order page, staff "Weigh & bill" page (with the express price in the preview), Help FAQ. "Book again" keeps the same speed.
+- **Switch after booking:** for **3 hours after booking**, the order page shows a "Need it faster?" card with a countdown. Customers can switch a standard order to Express (with a confirm step), or switch back. Allowed until the order is out for delivery. If staff already made the bill or set the delivery time, both are worked out again. Standard orders save the express price they were offered, so the switch costs the same as at booking. Endpoint: `POST /orders/:id/express { express: true|false }`; orders include `expressRules { canUpgrade, canDowngrade, deadline }`.
+- **Settings (backend):** `EXPRESS_ENABLED=true`, `EXPRESS_SWITCH_WINDOW_MINUTES=180`, `EXPRESS_SURCHARGE_PERCENT=50`, `EXPRESS_TURNAROUND_HOURS=24`. Defaults work without adding them to Vercel.
+- **Backend:** `GET /services` now includes `express { turnaroundHours, surchargePercent }` per service; `POST /orders` accepts `express: true`. Tests: `tests/express.test.js`. **Redeploy the backend.**
+
+---
+
 ## 27 Nov 2026 — Updates (notifications), rating after delivery, animations
 
 **Branch:** `feature/notifications-rating-polish`

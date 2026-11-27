@@ -4,6 +4,7 @@ import { ADDRESS_LABELS } from '../../addresses/components/AddressCard'
 import { formatCurrency, UNIT_LABEL } from '../../../utils/formatCurrency'
 import { formatShortDate } from '../../../utils/formatDate'
 import { slotLabel } from './PickupSchedule'
+import { hoursText } from './DeliverySpeed'
 
 function Row({ label, value, muted }) {
   return (
@@ -14,7 +15,7 @@ function Row({ label, value, muted }) {
   )
 }
 
-export function BookingSummary({ service, address, date, slotHour, stepsDone, submitting, onSubmit }) {
+export function BookingSummary({ service, express, address, date, slotHour, stepsDone, submitting, onSubmit }) {
   const ready = stepsDone === 3
   return (
     <aside className="rounded-2xl border border-line bg-white p-5 shadow-soft sm:p-6 lg:sticky lg:top-6">
@@ -29,6 +30,12 @@ export function BookingSummary({ service, address, date, slotHour, stepsDone, su
         <Row label="Service" value={service?.name ?? 'Not selected'} muted={!service} />
         <Row label="Rate" value={service ? `${formatCurrency(service.unitPricePaise)} ${UNIT_LABEL[service.pricingUnit]}` : '—'} muted={!service} />
         <Row label="Quantity" value="Confirmed at pickup" />
+        {service && (
+          <Row
+            label="Delivery"
+            value={express ? <span className="text-amber-700">Express · {hoursText(service.express.turnaroundHours)} (+{service.express.surchargePercent}%)</span> : `Standard · ${hoursText(service.turnaroundHours)}`}
+          />
+        )}
         <Row label="Address" value={address ? ADDRESS_LABELS[address.label] : 'Not selected'} muted={!address} />
         <Row
           label="Pickup"

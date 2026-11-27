@@ -3,7 +3,7 @@ import { Service } from '../models/Service.js'
 import { User } from '../models/User.js'
 import { ApiError } from '../utils/errors.js'
 import { findOrderByIdOrRef } from './booking.service.js'
-import { BILLABLE_STATUSES, computeBill, validateQuantity } from './billing.service.js'
+import { BILLABLE_STATUSES, computeBill, orderExpress, orderTurnaroundHours, validateQuantity } from './billing.service.js'
 
 async function loadOrder(idOrRef) {
   const order = await findOrderByIdOrRef(String(idOrRef || '').trim().toUpperCase().startsWith('WL-') ? String(idOrRef).trim().toUpperCase() : idOrRef)
@@ -41,7 +41,7 @@ export async function saveBill(staffUser, idOrRef, { quantity, note }) {
 
   const item = order.items[0]
   const q = validateQuantity(item.pricingUnit, quantity)
-  const bill = computeBill(item, q)
+  const bill = computeBill(item, q, { express: orderExpress(order) })
   const now = new Date()
 
   item.quantity = q
@@ -60,7 +60,7 @@ export async function saveBill(staffUser, idOrRef, { quantity, note }) {
 
   if (!order.estimatedDeliveryAt) {
     const service = await Service.findOne({ serviceId: item.serviceId })
-    order.estimatedDeliveryAt = new Date(now.getTime() + (service?.turnaroundHours || 48) * 3600000)
+    order.estimatedDeliveryAt = new Date(now.getTime() + orderTurnaroundHours(order, service) * 3600000)
   }
 
   order.markModified('items')

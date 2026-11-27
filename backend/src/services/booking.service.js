@@ -5,7 +5,8 @@ import { reserveSlot, releaseSlot } from './slot.service.js'
 import { assertServiceArea } from './location.service.js'
 import { enforceOwnership } from '../middleware/auth.js'
 import { ApiError } from '../utils/errors.js'
-import { changeDeadline, getChangeRules, policySettings } from './orderPolicy.js'
+import { changeDeadline, getChangeRules, getExpressRules, expressSwitchMinutes, policySettings } from './orderPolicy.js'
+import { computeBill, expressFor, orderExpress, orderTurnaroundHours } from './billing.service.js'
 
 export const ACTIVE_STATUSES = [
   'BOOKED',
@@ -58,6 +59,12 @@ export async function createOrder(userId, data, idempotencyKey) {
       postalCode: addressSnapshot.postalCode,
     })
 
+    const offer = expressFor(service)
+    const fast = data.express ? offer : null
+    if (data.express && !fast) {
+      throw ApiError.badRequest('Express delivery is not available for this service.', { express: 'Not available for this service.' })
+    }
+
     // 3. Atomically validate and reserve pickup slot capacity
     const pickupDate = new Date(data.pickupScheduledAt)
     dateStr = pickupDate.toISOString().split('T')[0]
@@ -86,6 +93,8 @@ export async function createOrder(userId, data, idempotencyKey) {
         },
       ],
       addressId: data.addressId,
+      // Standard orders keep the express terms they were offered, so they can switch later at the same price.
+      express: { enabled: Boolean(fast), ...(offer || {}) },
       pickupScheduledAt: pickupDate,
       pickupSlotHours: data.pickupSlotHours || 2,
       idempotencyKey: idempotencyKey || undefined,
@@ -293,5 +302,61 @@ export async function submitFeedback(userId, idOrRef, { rating, tags, comment, i
     { new: true },
   )
   if (!updated) throw new ApiError(409, 'FEEDBACK_ALREADY_GIVEN', 'You have already rated this order. Thank you!')
+  return updated.toJSON()
+}
+
+const EXPRESS_SWITCH_STATUSES = ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'IRONING', 'READY_FOR_DELIVERY']
+
+/**
+ * Switch an order to express (express = true) or back to standard, within the window after booking.
+ * If the bill or delivery time is already set, both are worked out again.
+ */
+export async function setExpress(userId, idOrRef, { express }) {
+  const order = await loadOwnOrder(userId, idOrRef)
+  const now = new Date()
+  const rules = getExpressRules(order, now)
+  if (!rules) throw new ApiError(409, 'EXPRESS_NOT_AVAILABLE', 'Express delivery is not available for this order.')
+  if (Boolean(order.express.enabled) === express) return order.toJSON() // already that way (double click)
+  if (express ? !rules.canUpgrade : !rules.canDowngrade) {
+    const late = now >= new Date(rules.deadline)
+    throw new ApiError(
+      409,
+      late ? 'EXPRESS_SWITCH_CLOSED' : 'EXPRESS_SWITCH_NOT_ALLOWED',
+      late
+        ? `Delivery speed can only be changed within ${expressSwitchMinutes() / 60} hours of booking.`
+        : 'Delivery speed can no longer be changed for this order.',
+    )
+  }
+
+  const windowStart = new Date(now.getTime() - expressSwitchMinutes() * 60 * 1000)
+  const updated = await Order.findOneAndUpdate(
+    {
+      _id: order._id,
+      createdAt: { $gt: windowStart },
+      currentStatus: { $in: EXPRESS_SWITCH_STATUSES },
+      'express.enabled': !express,
+    },
+    { $set: { 'express.enabled': express } },
+    { new: true },
+  )
+  if (!updated) throw new ApiError(409, 'ORDER_CHANGED', 'This order was just changed. Please refresh and try again.')
+
+  // Bill already written by staff? Redo it with or without the express charge.
+  const item = updated.items[0]
+  if (updated.bill?.finalizedAt && item?.quantity != null) {
+    updated.bill = {
+      ...computeBill(item, item.quantity, { express: orderExpress(updated) }),
+      finalizedAt: now,
+      finalizedBy: updated.bill.finalizedBy,
+      revision: (updated.bill.revision || 0) + 1,
+    }
+  }
+  // Delivery time already promised? Count it again from when the clothes reached us.
+  if (updated.estimatedDeliveryAt) {
+    const service = await Service.findOne({ serviceId: item?.serviceId })
+    const received = [...updated.statusHistory].reverse().find((h) => h.status === 'RECEIVED')?.changedAt || now
+    updated.estimatedDeliveryAt = new Date(new Date(received).getTime() + orderTurnaroundHours(updated, service) * 3600000)
+  }
+  if (updated.isModified()) await updated.save()
   return updated.toJSON()
 }

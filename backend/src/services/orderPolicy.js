@@ -49,3 +49,29 @@ export function getChangeRules(order, now = new Date()) {
     blockedReason: blockedReason || (canReschedule ? null : 'RESCHEDULE_LIMIT'),
   }
 }
+
+// Express can be switched until the order heads out for delivery (and within the window).
+const EXPRESS_SWITCH_STATUSES = ['BOOKED', 'PICKED_UP', 'RECEIVED', 'WASHING', 'IRONING', 'READY_FOR_DELIVERY']
+
+export function expressSwitchMinutes() {
+  return config?.EXPRESS_SWITCH_WINDOW_MINUTES ?? 180
+}
+
+/**
+ * Whether the customer can switch this order to express (or back) right now.
+ * null when express wasn't offered for this order.
+ */
+export function getExpressRules(order, now = new Date()) {
+  const e = order.express
+  if (!e?.turnaroundHours) return null
+  const created = order.createdAt ? new Date(order.createdAt) : now
+  const deadline = new Date(created.getTime() + expressSwitchMinutes() * MINUTE)
+  const open = now < deadline && EXPRESS_SWITCH_STATUSES.includes(order.currentStatus)
+  return {
+    canUpgrade: open && !e.enabled,
+    canDowngrade: open && Boolean(e.enabled),
+    deadline: deadline.toISOString(),
+    surchargePercent: e.surchargePercent,
+    turnaroundHours: e.turnaroundHours,
+  }
+}
