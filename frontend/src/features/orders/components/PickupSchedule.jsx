@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { cn } from '../../../utils/cn'
+import { SlidingHighlight } from '../../../components/ui/SlidingHighlight'
 
 export const SLOT_HOURS = 2
 const SLOT_STARTS = [8, 10, 12, 14, 16, 18]
@@ -29,6 +30,8 @@ function isSlotOpen(dateKey, hour, minLeadMinutes = 60, excludeIso = null, maxAh
  * maxAheadDays: latest a slot can be (rescheduling allows 7 days ahead).
  */
 export function PickupSchedule({ date, slotHour, onChange, error, minLeadMinutes = 60, excludeIso = null, maxAheadDays = null, hint }) {
+  const daysRef = useRef(null)
+  const slotsRef = useRef(null)
   const open = (key, h) => isSlotOpen(key, h, minLeadMinutes, excludeIso, maxAheadDays)
   const { days, today, tomorrow } = useMemo(() => {
     const list = []
@@ -49,7 +52,8 @@ export function PickupSchedule({ date, slotHour, onChange, error, minLeadMinutes
     <div className="space-y-5">
       <fieldset className="min-w-0">
         <legend className="mb-2.5 text-sm font-medium text-navy-700">Pickup date</legend>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+        <div ref={daysRef} className="relative -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+          <SlidingHighlight containerRef={daysRef} activeKey={date} className="bg-brand-700 shadow-lift" />
           {days.map((d) => {
             const key = toKey(d)
             const selected = key === date
@@ -58,16 +62,18 @@ export function PickupSchedule({ date, slotHour, onChange, error, minLeadMinutes
               <button
                 type="button"
                 key={key}
+                data-option={key}
                 aria-pressed={selected}
                 onClick={() => onChange({ date: key, slotHour: slotHour != null && open(key, slotHour) ? slotHour : null })}
                 className={cn(
-                  'flex min-w-[4.75rem] shrink-0 flex-col items-center rounded-xl border px-3 py-2.5 transition',
-                  selected ? 'border-brand-700 bg-brand-700 text-white shadow-lift' : 'border-line bg-white hover:border-navy-400/50',
+                  'relative z-10 flex min-w-[4.75rem] shrink-0 flex-col items-center rounded-xl border px-3 py-2.5 transition-[color,border-color,background-color,transform] duration-300 active:scale-95',
+                  // The green fill comes from the gliding box behind the selected day.
+                  selected ? 'border-transparent text-white' : 'border-line bg-white hover:border-navy-400/50',
                 )}
               >
-                <span className={cn('text-[11px] font-semibold uppercase tracking-wide', selected ? 'text-brand-100' : 'text-navy-500')}>{top}</span>
+                <span className={cn('text-[11px] font-semibold uppercase tracking-wide transition-colors duration-300', selected ? 'text-brand-100' : 'text-navy-500')}>{top}</span>
                 <span className="text-lg leading-tight font-extrabold">{d.getDate()}</span>
-                <span className={cn('text-xs', selected ? 'text-brand-100' : 'text-navy-500')}>{d.toLocaleDateString('en-IN', { month: 'short' })}</span>
+                <span className={cn('text-xs transition-colors duration-300', selected ? 'text-brand-100' : 'text-navy-500')}>{d.toLocaleDateString('en-IN', { month: 'short' })}</span>
               </button>
             )
           })}
@@ -76,7 +82,8 @@ export function PickupSchedule({ date, slotHour, onChange, error, minLeadMinutes
 
       <fieldset disabled={!date} className="min-w-0">
         <legend className="mb-2.5 text-sm font-medium text-navy-700">Time window</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div ref={slotsRef} className="relative grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <SlidingHighlight containerRef={slotsRef} activeKey={slotHour != null && date && open(date, slotHour) ? slotHour : null} className="border border-brand-500 bg-brand-50 ring-2 ring-brand-500/30" />
           {SLOT_STARTS.map((h) => {
             const isOpen = date && open(date, h)
             const selected = slotHour === h && isOpen
@@ -84,12 +91,13 @@ export function PickupSchedule({ date, slotHour, onChange, error, minLeadMinutes
               <button
                 type="button"
                 key={h}
+                data-option={h}
                 disabled={!isOpen}
                 aria-pressed={selected}
                 onClick={() => onChange({ slotHour: h })}
                 className={cn(
-                  'h-11 rounded-xl border text-sm font-semibold transition disabled:cursor-not-allowed disabled:border-dashed disabled:text-navy-400/70',
-                  selected ? 'border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-500/30' : 'border-line bg-white enabled:hover:border-navy-400/50',
+                  'relative z-10 h-11 rounded-xl border text-sm font-semibold transition-[color,border-color,transform] duration-300 enabled:active:scale-95 disabled:cursor-not-allowed disabled:border-dashed disabled:text-navy-400/70',
+                  selected ? 'border-transparent text-brand-700' : 'border-line bg-white enabled:hover:border-navy-400/50',
                 )}
               >
                 {slotLabel(h)}

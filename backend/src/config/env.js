@@ -16,7 +16,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters long for session token security.'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000), // 15 mins
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(600),
   AUTH_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(20),
   DEFAULT_SLOT_CAPACITY: z.coerce.number().default(5),
   // Customers can cancel or reschedule until this many minutes before the pickup window starts.

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { CalendarClock, XCircle, Clock3, Ban } from 'lucide-react'
 import { api } from '../../../services/api-client'
 import { Card, CardHeader, CardBody } from '../../../components/ui/Card'
@@ -8,6 +8,7 @@ import { Textarea } from '../../../components/ui/Input'
 import { formatDateTime, formatSlot } from '../../../utils/formatDate'
 import { cn } from '../../../utils/cn'
 import { PickupSchedule, toPickupIso, SLOT_HOURS } from './PickupSchedule'
+import { SlidingHighlight } from '../../../components/ui/SlidingHighlight'
 
 export const CANCEL_REASONS = [
   { value: 'CHANGE_OF_PLANS', label: 'My plans changed' },
@@ -145,6 +146,7 @@ function RescheduleDialog({ open, order, onClose, onDone }) {
 
 function CancelDialog({ open, order, onClose, onDone }) {
   const [reason, setReason] = useState(null)
+  const reasonsRef = useRef(null)
   const [note, setNote] = useState('')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -188,13 +190,15 @@ function CancelDialog({ open, order, onClose, onDone }) {
     >
       <fieldset className="min-w-0">
         <legend className="mb-2.5 text-sm font-medium text-navy-700">Why are you cancelling?</legend>
-        <div className="space-y-2">
+        <div ref={reasonsRef} className="relative space-y-2">
+          <SlidingHighlight containerRef={reasonsRef} activeKey={reason} className="border border-brand-500 bg-brand-50 ring-2 ring-brand-500/20" />
           {CANCEL_REASONS.map((r) => (
             <label
               key={r.value}
+              data-option={r.value}
               className={cn(
-                'flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 text-sm transition',
-                reason === r.value ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-line hover:border-navy-400/50',
+                'relative z-10 flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 text-sm transition-[border-color]',
+                reason === r.value ? 'border-transparent' : 'border-line hover:border-navy-400/50',
               )}
             >
               <input

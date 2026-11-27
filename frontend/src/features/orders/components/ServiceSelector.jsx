@@ -1,9 +1,12 @@
+import { useRef } from 'react'
 import { ServiceIcon } from '../../services/components/ServiceCard'
+import { SlidingHighlight } from '../../../components/ui/SlidingHighlight'
 import { formatCurrency, UNIT_LABEL } from '../../../utils/formatCurrency'
 import { Skeleton } from '../../../components/ui/Spinner'
 import { cn } from '../../../utils/cn'
 
 export function ServiceSelector({ services, loading, value, onChange, error }) {
+  const gridRef = useRef(null)
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -15,16 +18,19 @@ export function ServiceSelector({ services, loading, value, onChange, error }) {
   return (
     <fieldset className="min-w-0">
       <legend className="sr-only">Service</legend>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div ref={gridRef} className="relative grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <SlidingHighlight containerRef={gridRef} activeKey={value} className="border border-brand-500 bg-brand-50/60 shadow-lift ring-4 ring-brand-500/10" />
         {services.map((s) => {
           const selected = value === s.id
           return (
             <label
               key={s.id}
+              data-option={s.id}
               className={cn(
-                'relative flex cursor-pointer flex-col rounded-xl border p-4 transition-all',
+                'relative z-10 flex cursor-pointer flex-col rounded-xl border p-4 transition-[border-color,background-color,transform] duration-300 active:scale-[0.98]',
                 'has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand-100',
-                selected ? 'border-brand-500 bg-brand-50/60 shadow-lift' : 'border-line hover:border-navy-400/50 hover:bg-canvas/60',
+                // The selected look comes from the gliding box behind the card.
+                selected ? 'border-transparent' : 'border-line hover:border-navy-400/50 hover:bg-canvas/60',
               )}
             >
               <input type="radio" name="service" value={s.id} checked={selected} onChange={() => onChange(s.id)} className="sr-only" />

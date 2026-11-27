@@ -1,10 +1,13 @@
+import { useRef } from 'react'
 import { Clock3, Zap } from 'lucide-react'
+import { SlidingHighlight } from '../../../components/ui/SlidingHighlight'
 import { cn } from '../../../utils/cn'
 
 export const hoursText = (h) => (h % 24 === 0 ? `${h / 24} day${h === 24 ? '' : 's'}` : `${h} hours`)
 
 /** Standard vs Express choice under the service picker. Hidden when the service has no express option. */
 export function DeliverySpeed({ service, express, onChange }) {
+  const rowRef = useRef(null)
   if (!service?.express) return null
   const options = [
     { value: false, icon: Clock3, title: 'Standard', time: `Back in ${hoursText(service.turnaroundHours)}`, price: 'No extra charge' },
@@ -13,17 +16,21 @@ export function DeliverySpeed({ service, express, onChange }) {
   return (
     <fieldset className="mt-5 min-w-0 animate-fade-up">
       <legend className="mb-2.5 text-sm font-semibold text-navy-700">Delivery speed</legend>
-      <div className="grid gap-3 min-[420px]:grid-cols-2">
+      <div ref={rowRef} className="relative grid gap-3 min-[420px]:grid-cols-2">
+        <SlidingHighlight
+          containerRef={rowRef}
+          activeKey={express ? 'express' : 'standard'}
+          className={cn('border', express ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/25' : 'border-brand-500 bg-brand-50/60 ring-2 ring-brand-500/20')}
+        />
         {options.map(({ value, icon: Icon, title, time, price }) => {
           const on = express === value
           return (
             <label
               key={title}
+              data-option={value ? 'express' : 'standard'}
               className={cn(
-                'relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition',
-                on
-                  ? value ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/25' : 'border-brand-500 bg-brand-50/60 ring-2 ring-brand-500/20'
-                  : 'border-line hover:border-navy-400/50',
+                'relative z-10 flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-[border-color,transform] duration-300 active:scale-[0.98]',
+                on ? 'border-transparent' : 'border-line hover:border-navy-400/50',
               )}
             >
               <input type="radio" name="delivery-speed" className="sr-only" checked={on} onChange={() => onChange(value)} />
