@@ -1,5 +1,6 @@
 import * as staffService from '../services/staff.service.js'
-import { saveBillSchema, advanceStatusSchema, assignRiderSchema, setRoleSchema, validate } from '../utils/validation.js'
+import * as paymentService from '../services/payment.service.js'
+import { saveBillSchema, advanceStatusSchema, assignRiderSchema, setRoleSchema, setPaymentSchema, validate } from '../utils/validation.js'
 
 export async function getOrder(req, res, next) {
   try {
@@ -64,6 +65,15 @@ export async function setRole(req, res, next) {
   try {
     const data = validate(setRoleSchema, req.body)
     return res.json({ data: await staffService.setRole(req.user, data) })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function setPayment(req, res, next) {
+  try {
+    const data = validate(setPaymentSchema, req.body)
+    return res.json({ data: await paymentService.setPayment(req.user, req.params.id, data) })
   } catch (err) {
     next(err)
   }

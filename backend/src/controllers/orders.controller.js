@@ -1,6 +1,7 @@
 import * as bookingService from '../services/booking.service.js'
 import * as trackingService from '../services/tracking.service.js'
-import { createOrderSchema, listOrdersQuerySchema, cancelOrderSchema, rescheduleOrderSchema, feedbackSchema, expressSwitchSchema, validate } from '../utils/validation.js'
+import * as paymentService from '../services/payment.service.js'
+import { createOrderSchema, listOrdersQuerySchema, cancelOrderSchema, rescheduleOrderSchema, feedbackSchema, expressSwitchSchema, payNowSchema, validate } from '../utils/validation.js'
 
 export async function createOrder(req, res, next) {
   try {
@@ -86,6 +87,16 @@ export async function setExpress(req, res, next) {
   try {
     const data = validate(expressSwitchSchema, req.body)
     const order = await bookingService.setExpress(req.user._id, req.params.id, data)
+    return res.json({ data: order })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function markPaid(req, res, next) {
+  try {
+    const data = validate(payNowSchema, req.body)
+    const order = await paymentService.markPaidByCustomer(req.user._id, req.params.id, data)
     return res.json({ data: order })
   } catch (err) {
     next(err)

@@ -13,6 +13,7 @@ router.use(privateCacheControl)
 
 router.get('/work', staffController.getWorkList)
 router.post('/orders/:id/status', staffController.advanceStatus)
+router.post('/orders/:id/payment', staffController.setPayment)
 
 router.get('/riders', staff, staffController.listRiders)
 router.get('/orders/:id', staff, staffController.getOrder)

@@ -3,7 +3,7 @@ import { findOrderByIdOrRef, riderFor, deliveryCodeFor } from './booking.service
 import { enforceOwnership } from '../middleware/auth.js'
 import { ApiError } from '../utils/errors.js'
 import { config } from '../config/env.js'
-import { computeBill, orderExpress, orderTurnaroundHours } from './billing.service.js'
+import { computeBill, orderExpress, orderTurnaroundHours, buildUpiIntent } from './billing.service.js'
 
 export async function getTracking(userId, idOrRef) {
   const order = await findOrderByIdOrRef(idOrRef)
@@ -24,6 +24,8 @@ export async function getTracking(userId, idOrRef) {
     history: json.statusHistory,
     rider: await riderFor(order),
     deliveryCode: deliveryCodeFor(order),
+    payment: order.toJSON().payment,
+    upiPayment: buildUpiIntent(order),
   }
 }
 

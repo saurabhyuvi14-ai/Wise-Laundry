@@ -5,6 +5,20 @@
 
 ---
 
+## 28 Nov 2026 — Direct UPI payments (no gateway, no 2% fee)
+
+**Branch:** `feature/upi-payments`
+
+- Money goes **straight to our UPI ID** via a standard `upi://pay` link + QR — no payment gateway, so no 2% cut. (Cards would need a gateway and are not included.)
+- **Customer**: once the bill is ready, the order and tracking pages show a **Pay ₹X** card — a one-tap "Pay with any UPI app" button (opens GPay/PhonePe/Paytm with the amount filled in) and a QR to scan on a computer. "I've paid" (optional UPI reference) marks it **checking**; staff/rider confirm → **Paid**.
+- **Rider/staff**: each billed order on the work list has a payment badge (Unpaid / Checking / Paid) and **Collect payment** — shows the customer a QR and records **Paid by UPI / Cash** in one tap. Riders can only touch their own jobs; staff can undo a wrong mark.
+- Since there's no gateway, confirmation is done by a person (customer taps paid, rider/staff confirm). Nothing can be faked into "paid" without a confirm.
+- **Settings (backend)**: `UPI_ID` (your business UPI handle — leave empty to hide payment entirely), `UPI_PAYEE_NAME`, `PAYMENT_CASH_ALLOWED`.
+- **Frontend dependency**: `qrcode.react` (run `npm install` in `frontend/` once).
+- Endpoints: order JSON gains `payment` + `upiPayment`; `POST /orders/:id/pay`, `POST /staff/orders/:id/payment`. Tests: `tests/payments.test.js`. **Redeploy the backend and set `UPI_ID`.**
+
+---
+
 ## 28 Nov 2026 — Staff & rider panel (steps 1–3)
 
 - **Work list (`/staff`)**: orders grouped as To pick up (Today / Tomorrow, late ones flagged), At the laundry, To deliver — with name, phone, address (opens Maps), Express tag and instructions. `GET /api/v1/staff/work`.

@@ -15,6 +15,7 @@ import { STATUS, stageLabel } from '../features/orders/components/OrderStatusBad
 import { formatDateTime, formatRelative } from '../utils/formatDate'
 import { cn } from '../utils/cn'
 import { RiderCard, DeliveryCode } from '../features/orders/components/RiderCard'
+import { CustomerPayment } from '../features/orders/components/Payment'
 
 /** /customer/tracking — opens the most recently updated active order, or explains there is nothing to track. */
 export function TrackingLatest() {
@@ -91,6 +92,7 @@ export default function LiveTrackingPage() {
 
         <RiderCard rider={t.rider} status={t.currentStatus} />
         <DeliveryCode code={t.deliveryCode} />
+        <CustomerPayment order={{ ...t, id: t.orderId }} onPaid={() => tracking.refresh()} />
 
         <Card className="px-1 py-5 min-[360px]:px-2 sm:px-8 sm:py-8">
           <TrackingTimeline service={service} history={t.history} currentStatus={t.currentStatus} />

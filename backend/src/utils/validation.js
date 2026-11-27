@@ -215,3 +215,14 @@ export const setRoleSchema = z.object({
   email: z.string().trim().email('Enter a valid email.'),
   role: z.enum(['CUSTOMER', 'RIDER', 'STAFF', 'ADMIN'], { errorMap: () => ({ message: 'Pick a role.' }) }),
 })
+
+export const payNowSchema = z.object({
+  upiRef: z.string().trim().max(30).regex(/^[A-Za-z0-9]*$/, 'Letters and numbers only.').optional().default(''),
+})
+
+export const setPaymentSchema = z
+  .object({
+    status: z.enum(['PAID', 'UNPAID'], { errorMap: () => ({ message: 'Pick paid or unpaid.' }) }),
+    method: z.enum(['UPI', 'CASH']).optional(),
+  })
+  .refine((d) => d.status !== 'PAID' || Boolean(d.method), { message: 'How was it paid?', path: ['method'] })

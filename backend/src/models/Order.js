@@ -161,6 +161,15 @@ const orderSchema = new mongoose.Schema(
       finalizedBy: { type: String, default: null },
       revision: { type: Number, default: 0 },
     },
+    // Direct UPI / cash payment. The money goes straight to our UPI ID; a person confirms it here.
+    payment: {
+      status: { type: String, enum: ['UNPAID', 'PENDING', 'PAID'], default: 'UNPAID' },
+      method: { type: String, enum: ['UPI', 'CASH'], default: null },
+      upiRef: { type: String, default: '' }, // optional 12-digit UPI reference the customer pastes
+      markedAt: { type: Date, default: null }, // when the customer said they paid
+      confirmedBy: { type: String, default: null }, // rider/staff who confirmed, or 'CUSTOMER'
+      confirmedAt: { type: Date, default: null },
+    },
     // Cancel / reschedule
     rescheduleCount: {
       type: Number,
@@ -279,6 +288,13 @@ const orderSchema = new mongoose.Schema(
               cancelledBy: ret.cancellation.cancelledBy,
             }
           : null
+
+        ret.payment = {
+          status: ret.payment?.status || 'UNPAID',
+          method: ret.payment?.method || null,
+          upiRef: ret.payment?.upiRef || '',
+          confirmedAt: ret.payment?.confirmedAt ? ret.payment.confirmedAt.toISOString() : null,
+        }
 
         const priced = ret.items.length > 0 && ret.items.every((i) => i.quantity != null)
         ret.bill = ret.bill?.finalizedAt

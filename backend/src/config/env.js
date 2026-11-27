@@ -31,6 +31,10 @@ const envSchema = z.object({
   EXPRESS_TURNAROUND_HOURS: z.coerce.number().int().min(1).max(72).default(24),
   // After booking, the customer can switch between standard and express for this long.
   EXPRESS_SWITCH_WINDOW_MINUTES: z.coerce.number().int().min(0).default(180),
+  // Direct UPI payments. UPI_ID is your business UPI handle (e.g. wiselaundry@ybl); empty hides payment.
+  UPI_ID: z.string().trim().default(''),
+  UPI_PAYEE_NAME: z.string().trim().default('Wise Laundry'),
+  PAYMENT_CASH_ALLOWED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   ORDER_CHANGE_CUTOFF_MINUTES: z.coerce.number().int().min(0).default(120),
   // How many times one order can be rescheduled.
   ORDER_MAX_RESCHEDULES: z.coerce.number().int().min(0).default(2),

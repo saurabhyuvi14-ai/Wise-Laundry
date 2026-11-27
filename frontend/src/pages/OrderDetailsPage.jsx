@@ -20,6 +20,7 @@ import { OrderFeedback } from '../features/orders/components/OrderFeedback'
 import { ExpressBadge } from '../features/orders/components/DeliverySpeed'
 import { ExpressSwitch } from '../features/orders/components/ExpressSwitch'
 import { RiderCard, DeliveryCode } from '../features/orders/components/RiderCard'
+import { CustomerPayment } from '../features/orders/components/Payment'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
@@ -32,7 +33,7 @@ export default function OrderDetailsPage() {
   // After a reschedule or cancel: show the updated order, or reload it if the change was refused.
   function onChanged(updated, message, tone = 'success') {
     // Change responses don't include the rider or code, so keep what we already have.
-    if (updated) setData({ rider: order?.rider, deliveryCode: order?.deliveryCode, ...updated })
+    if (updated) setData({ rider: order?.rider, deliveryCode: order?.deliveryCode, upiPayment: order?.upiPayment, ...updated })
     else reload({ silent: true })
     if (message) toast(message, tone)
   }
@@ -65,6 +66,7 @@ export default function OrderDetailsPage() {
         <div className="space-y-5">
           <RiderCard rider={order.rider} status={order.currentStatus} />
           <DeliveryCode code={order.deliveryCode} />
+          <CustomerPayment order={order} onPaid={onChanged} />
           <OrderFeedback order={order} onSaved={onChanged} />
           <Card className="flex items-center gap-4 border-brand-200 bg-brand-50/40 p-5">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-700 text-white">

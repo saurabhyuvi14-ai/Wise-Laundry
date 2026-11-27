@@ -5,7 +5,7 @@ import { Service } from '../models/Service.js'
 import { User } from '../models/User.js'
 import { ApiError } from '../utils/errors.js'
 import { findOrderByIdOrRef } from './booking.service.js'
-import { BILLABLE_STATUSES, computeBill, orderExpress, orderTurnaroundHours, validateQuantity } from './billing.service.js'
+import { BILLABLE_STATUSES, computeBill, orderExpress, orderTurnaroundHours, validateQuantity, buildUpiIntent } from './billing.service.js'
 
 async function loadOrder(idOrRef) {
   const order = await findOrderByIdOrRef(String(idOrRef || '').trim().toUpperCase().startsWith('WL-') ? String(idOrRef).trim().toUpperCase() : idOrRef)
@@ -100,6 +100,8 @@ function workCard(order, customer, service, rider) {
     estimatedDeliveryAt: o.estimatedDeliveryAt || null,
     instructions: o.instructions || '',
     billed: Boolean(o.bill),
+    payment: o.payment,
+    upi: buildUpiIntent(order),
     rider: rider ? { id: String(rider._id), fullName: rider.fullName } : null,
     customer: {
       fullName: customer?.fullName || a.recipientName || 'Customer',

@@ -16,6 +16,7 @@ router.post('/:id/cancel', ordersController.cancelOrder)
 router.post('/:id/reschedule', ordersController.rescheduleOrder)
 router.post('/:id/feedback', ordersController.submitFeedback)
 router.post('/:id/express', ordersController.setExpress)
+router.post('/:id/pay', ordersController.markPaid)
 router.post('/:id/advance', ordersController.advanceOrder)
 
 export default router

@@ -12,6 +12,7 @@ import { ErrorMessage } from '../components/feedback/ErrorMessage'
 import { useToast } from '../components/feedback/Toast'
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge'
 import { ExpressBadge } from '../features/orders/components/DeliverySpeed'
+import { CollectPayment } from '../features/orders/components/Payment'
 import { formatSlot, formatDateTime } from '../utils/formatDate'
 import { cn } from '../utils/cn'
 
@@ -46,7 +47,7 @@ function mapsLink(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
 }
 
-function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRider }) {
+function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRider, onPay }) {
   const unit = c.pricingUnit === 'KG' ? 'kg' : 'items'
   // Picking up asks for the weight/count; delivering asks for the customer's code.
   const [asking, setAsking] = useState(false)
@@ -157,6 +158,10 @@ function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRide
             </Button>
           )}
         </div>}
+
+        {!asking && c.billed && (
+          <div className="mt-3 border-t border-line pt-3"><CollectPayment card={c} onDone={onPay} /></div>
+        )}
       </Card>
     </li>
   )
@@ -213,6 +218,11 @@ export default function StaffWorkPage() {
       setMoving(null)
       load()
     }
+  }
+
+  function payDone(message, tone = 'success') {
+    toast(message, tone)
+    load()
   }
 
   async function assign(c, riderId) {
@@ -282,7 +292,7 @@ export default function StaffWorkPage() {
                   <span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-bold text-navy-700">{list.length}</span>
                 </h2>
                 {list.length ? (
-                  <ul className="space-y-3">{list.map((c, i) => <WorkCard key={c.id} c={c} group={key} index={i} onAdvance={advance} moving={moving === c.id} riders={riders} onAssign={assign} isRider={isRider} />)}</ul>
+                  <ul className="space-y-3">{list.map((c, i) => <WorkCard key={c.id} c={c} group={key} index={i} onAdvance={advance} moving={moving === c.id} riders={riders} onAssign={assign} isRider={isRider} onPay={payDone} />)}</ul>
                 ) : (
                   <Card className="p-5 text-sm text-navy-500"><ClipboardList className="mb-2 size-5 text-navy-400" aria-hidden />{empty}</Card>
                 )}

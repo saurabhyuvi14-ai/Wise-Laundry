@@ -87,3 +87,24 @@ export function orderExpress(order) {
 export function orderTurnaroundHours(order, service) {
   return orderExpress(order)?.turnaroundHours || service?.turnaroundHours || 48
 }
+
+// ---------- UPI payment (money goes straight to our UPI ID, no gateway) ----------
+
+export const upiConfigured = () => Boolean(config?.UPI_ID)
+export const cashAllowed = () => config?.PAYMENT_CASH_ALLOWED !== false
+
+/**
+ * The UPI details to pay this order directly to our UPI ID. Null when UPI isn't set up,
+ * the bill isn't ready, or it's already paid. `link` is a standard UPI intent that opens
+ * any UPI app with the amount prefilled; the frontend also renders it as a QR to scan.
+ */
+export function buildUpiIntent(order) {
+  if (!upiConfigured() || !order.bill?.totalPaise || order.payment?.status === 'PAID') return null
+  const amount = (order.bill.totalPaise / 100).toFixed(2)
+  const payeeName = config.UPI_PAYEE_NAME || 'Wise Laundry'
+  const note = `${payeeName} ${order.reference}`
+  const link =
+    `upi://pay?pa=${encodeURIComponent(config.UPI_ID)}&pn=${encodeURIComponent(payeeName)}` +
+    `&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`
+  return { upiId: config.UPI_ID, payeeName, amount, amountPaise: order.bill.totalPaise, note, link, cashAllowed: cashAllowed() }
+}

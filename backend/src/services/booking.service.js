@@ -8,7 +8,7 @@ import { assertServiceArea } from './location.service.js'
 import { enforceOwnership } from '../middleware/auth.js'
 import { ApiError } from '../utils/errors.js'
 import { changeDeadline, getChangeRules, getExpressRules, expressSwitchMinutes, policySettings } from './orderPolicy.js'
-import { computeBill, expressFor, orderExpress, orderTurnaroundHours } from './billing.service.js'
+import { computeBill, expressFor, orderExpress, orderTurnaroundHours, buildUpiIntent } from './billing.service.js'
 
 export const ACTIVE_STATUSES = [
   'BOOKED',
@@ -151,7 +151,7 @@ export async function getOrderById(userId, idOrRef) {
   }
 
   enforceOwnership(order.userId, userId)
-  return { ...order.toJSON(), rider: await riderFor(order), deliveryCode: deliveryCodeFor(order) }
+  return { ...order.toJSON(), rider: await riderFor(order), deliveryCode: deliveryCodeFor(order), upiPayment: buildUpiIntent(order) }
 }
 
 /**
