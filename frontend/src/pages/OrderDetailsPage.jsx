@@ -17,6 +17,8 @@ import { OrderBill } from '../features/orders/components/OrderBill'
 import { useToast } from '../components/feedback/Toast'
 import { BookAgainButton } from '../features/orders/components/BookAgainButton'
 import { OrderFeedback } from '../features/orders/components/OrderFeedback'
+import { ExpressBadge } from '../features/orders/components/DeliverySpeed'
+import { ExpressSwitch } from '../features/orders/components/ExpressSwitch'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
@@ -47,7 +49,7 @@ export default function OrderDetailsPage() {
         back={{ to: '/customer/orders', label: 'My Orders' }}
         title={`Order ${order.reference}`}
         description={`Placed on ${formatDate(order.createdAt)}`}
-        badge={<OrderStatusBadge status={order.currentStatus} label={stageLabel(order.currentStatus, service)} />}
+        badge={<span className="inline-flex flex-wrap items-center gap-2"><OrderStatusBadge status={order.currentStatus} label={stageLabel(order.currentStatus, service)} />{order.express && <ExpressBadge />}</span>}
         action={
           ['DELIVERED', 'CANCELLED'].includes(order.currentStatus) ? (
             <BookAgainButton order={order} variant="primary" />
@@ -117,6 +119,7 @@ export default function OrderDetailsPage() {
               <p className="font-semibold">{order.estimatedDeliveryAt ? formatDateTime(order.estimatedDeliveryAt) : 'Not estimated yet'}</p>
             </CardBody>
           </Card>
+          <ExpressSwitch order={order} standardHours={service?.turnaroundHours} onChanged={onChanged} />
           <OrderChanges order={order} onChanged={onChanged} />
           <Card>
             <CardHeader icon={MapPin} title={`${ADDRESS_LABELS[a.label] ?? 'Address'}`} />

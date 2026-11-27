@@ -34,7 +34,7 @@ function faqs(services) {
     },
     {
       q: 'How long does it take?',
-      a: `${turnaround ? `${turnaround}, counted from pickup. ` : ''}Your order page shows the expected delivery time, and you can track every step live.`,
+      a: `${turnaround ? `${turnaround}, counted from pickup. ` : ''}Need it sooner? Pick Express when booking for faster delivery at a small extra charge. Your order page shows the expected delivery time, and you can track every step live.`,
     },
     {
       q: 'Can I change or cancel my pickup?',

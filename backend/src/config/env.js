@@ -25,6 +25,12 @@ const envSchema = z.object({
   BILL_DELIVERY_FEE_PAISE: z.coerce.number().int().min(0).default(0),
   BILL_FREE_DELIVERY_ABOVE_PAISE: z.coerce.number().int().min(0).default(0),
   BILL_GST_PERCENT: z.coerce.number().min(0).max(28).default(0),
+  // Express delivery: extra charge on the washing amount, and how much faster it is.
+  EXPRESS_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  EXPRESS_SURCHARGE_PERCENT: z.coerce.number().min(0).max(200).default(50),
+  EXPRESS_TURNAROUND_HOURS: z.coerce.number().int().min(1).max(72).default(24),
+  // After booking, the customer can switch between standard and express for this long.
+  EXPRESS_SWITCH_WINDOW_MINUTES: z.coerce.number().int().min(0).default(180),
   ORDER_CHANGE_CUTOFF_MINUTES: z.coerce.number().int().min(0).default(120),
   // How many times one order can be rescheduled.
   ORDER_MAX_RESCHEDULES: z.coerce.number().int().min(0).default(2),

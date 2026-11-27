@@ -123,6 +123,7 @@ export const createOrderSchema = z.object({
   }, 'Pick a future time.'),
   pickupSlotHours: z.number().min(1).max(6).default(2),
   instructions: z.string().trim().max(500).optional().default(''),
+  express: z.boolean().optional().default(false),
 })
 
 export const cancelOrderSchema = z.object({
@@ -195,3 +196,7 @@ export const feedbackSchema = z
       .default(null),
   })
   .refine((d) => !d.issue || d.issue.type !== 'OTHER' || d.issue.note.length > 0, { message: 'Tell us what went wrong.', path: ['issue', 'note'] })
+
+export const expressSwitchSchema = z.object({
+  express: z.boolean({ required_error: 'Choose standard or express.', invalid_type_error: 'Choose standard or express.' }),
+})

@@ -12,6 +12,7 @@ import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge
 import { BillLines } from '../features/orders/components/OrderBill'
 import { formatCurrency, UNIT_LABEL } from '../utils/formatCurrency'
 import { formatSlot } from '../utils/formatDate'
+import { ExpressBadge } from '../features/orders/components/DeliverySpeed'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
@@ -92,6 +93,7 @@ export default function StaffBillingPage() {
               <CardBody className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <OrderStatusBadge status={order.currentStatus} />
+                  {order.express && <ExpressBadge />}
                   <span className="text-navy-500">{order.customer?.fullName} · {order.customer?.phone}</span>
                 </div>
                 <p className="text-sm text-navy-500">Pickup: {formatSlot(order.pickupScheduledAt, order.pickupSlotHours)} · Rate {formatCurrency(item.unitPricePaise)} {UNIT_LABEL[item.pricingUnit]}</p>
@@ -107,7 +109,7 @@ export default function StaffBillingPage() {
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       error={error}
-                      hint={preview != null ? `${quantity} ${unitWord[item.pricingUnit]} × rate = ${formatCurrency(preview)} (before any extras)` : undefined}
+                      hint={preview != null ? `${quantity} ${unitWord[item.pricingUnit]} × rate = ${formatCurrency(preview)}${order.express ? ` + ${order.express.surchargePercent}% express = ${formatCurrency(Math.round(preview * (1 + order.express.surchargePercent / 100)))}` : ''} (before any other extras)` : undefined}
                     />
                     <Button type="submit" loading={busy}>{order.bill ? 'Update bill' : 'Save bill'}</Button>
                   </form>

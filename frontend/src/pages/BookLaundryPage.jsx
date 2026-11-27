@@ -16,7 +16,7 @@ export default function BookLaundryPage() {
       {again && (
         <p className="mb-5 flex animate-fade-up items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
           <RotateCcw className="size-4 shrink-0" aria-hidden />
-          <span>Same service, address and instructions as <strong>{again}</strong>. Just pick a time.</span>
+          <span>Same service, speed, address and instructions as <strong>{again}</strong>. Just pick a time.</span>
         </p>
       )}
       <BookingForm />

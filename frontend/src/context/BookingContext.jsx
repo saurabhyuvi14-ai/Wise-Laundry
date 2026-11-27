@@ -8,6 +8,7 @@ const emptyDraft = () => ({
   date: null, // 'YYYY-MM-DD'
   slotHour: null, // 24h start hour of a 2-hour requested window
   instructions: '',
+  express: false,
   idempotencyKey: crypto.randomUUID(),
 })
 

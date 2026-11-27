@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { InstructionChips } from './InstructionChips'
+import { DeliverySpeed } from './DeliverySpeed'
 import { cn } from '../../../utils/cn'
 import { ServiceSelector } from './ServiceSelector'
 import { AddressSelector } from './AddressSelector'
@@ -55,6 +56,7 @@ export function BookingForm() {
             onChange={(serviceId) => update({ serviceId })}
             error={errors['items.0.serviceId']}
           />
+          <DeliverySpeed service={service} express={Boolean(draft.express && service?.express)} onChange={(express) => update({ express })} />
         </BookingStep>
 
         <BookingStep number={2} title="Pickup address" done={Boolean(address)}>
@@ -87,6 +89,7 @@ export function BookingForm() {
 
       <BookingSummary
         service={service}
+        express={Boolean(draft.express && service?.express)}
         address={address}
         date={draft.date}
         slotHour={draft.slotHour}

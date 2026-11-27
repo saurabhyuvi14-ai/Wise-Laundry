@@ -46,6 +46,7 @@ export function useBooking() {
           pickupScheduledAt: toPickupIso(draft.date, draft.slotHour),
           pickupSlotHours: SLOT_HOURS,
           instructions: draft.instructions,
+          express: Boolean(draft.express && service?.express),
         },
         draft.idempotencyKey,
       )
@@ -94,6 +95,7 @@ export function useBookAgain() {
         serviceId: order.items[0].serviceId,
         addressId: address?.id ?? null,
         instructions: order.instructions || '',
+        express: Boolean(order.express),
         date: null,
         slotHour: null,
       })

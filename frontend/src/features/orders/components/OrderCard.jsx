@@ -4,6 +4,7 @@ import { OrderStatusBadge } from './OrderStatusBadge'
 import { ServiceIcon } from '../../services/components/ServiceCard'
 import { formatShortDate, formatDate } from '../../../utils/formatDate'
 import { formatCurrency } from '../../../utils/formatCurrency'
+import { ExpressBadge } from './DeliverySpeed'
 
 /** One order row. Uses the DB id in the URL and the friendly reference for display. */
 export function OrderCard({ order }) {
@@ -20,6 +21,7 @@ export function OrderCard({ order }) {
         <p className="flex items-center gap-2 font-bold">
           {order.reference}
           <span className="hidden text-sm font-medium text-navy-500 sm:inline">· {item.serviceName}</span>
+          {order.express && <ExpressBadge />}
         </p>
         <p className="mt-0.5 truncate text-sm text-navy-500">
           <span className="sm:hidden">{item.serviceName} · </span>
