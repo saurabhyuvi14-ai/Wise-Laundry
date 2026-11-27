@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useServices } from '../../services/components/ServiceList'
 import { useAddresses } from '../../addresses/components/AddressCard'
@@ -73,4 +73,32 @@ export function useBooking() {
     errors,
     submit,
   }
+}
+
+/**
+ * "Book again": copy service, address and instructions from a past order into the
+ * booking draft, then open Book a Pickup so the customer only picks a new time.
+ * Older orders don't store the address id, so match the saved copy of the address.
+ */
+export function useBookAgain() {
+  const { update } = useBookingDraft()
+  const navigate = useNavigate()
+
+  return useCallback(
+    (order, savedAddresses = []) => {
+      const snap = order.addressSnapshot || {}
+      const same = (a) =>
+        a.addressLine1 === snap.addressLine1 && a.postalCode === snap.postalCode && (a.label === snap.label || !snap.label)
+      const address = savedAddresses.find((a) => a.id === order.addressId) || savedAddresses.find(same)
+      update({
+        serviceId: order.items[0].serviceId,
+        addressId: address?.id ?? null,
+        instructions: order.instructions || '',
+        date: null,
+        slotHour: null,
+      })
+      navigate(`/customer/book?again=${encodeURIComponent(order.reference)}`)
+    },
+    [update, navigate],
+  )
 }

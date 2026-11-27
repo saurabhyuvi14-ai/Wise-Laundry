@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale } from 'lucide-react'
+import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale, LifeBuoy } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
@@ -61,7 +61,17 @@ export function CustomerSidebar() {
         })}
       </nav>
 
-      <div className="mt-auto flex items-center gap-2 rounded-xl border border-line p-2">
+      <NavLink
+        to="/customer/help"
+        className={({ isActive }) => cn(
+          'mt-auto mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition',
+          isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-navy-700 hover:bg-canvas hover:text-navy-900',
+        )}
+      >
+        <LifeBuoy className="size-[19px]" aria-hidden /> Help &amp; support
+      </NavLink>
+
+      <div className="flex items-center gap-2 rounded-xl border border-line p-2">
         <span className="flex min-w-0 flex-1 items-center gap-3 p-1">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-700 text-sm font-bold text-white">
             {user?.fullName?.[0] ?? '?'}

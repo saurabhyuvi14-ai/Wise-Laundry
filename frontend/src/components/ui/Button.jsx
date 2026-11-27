@@ -15,7 +15,7 @@ const sizes = {
   lg: 'h-12 px-6 text-base gap-2 rounded-xl',
 }
 
-export function Button({ variant = 'primary', size = 'md', loading, to, className, children, disabled, ...props }) {
+export function Button({ variant = 'primary', size = 'md', loading, to, href, className, children, disabled, ...props }) {
   const classes = cn(
     'inline-flex items-center justify-center font-semibold transition-all duration-150 active:scale-[0.98]',
     'disabled:pointer-events-none disabled:opacity-50',
@@ -28,6 +28,13 @@ export function Button({ variant = 'primary', size = 'md', loading, to, classNam
       <Link to={to} className={classes} {...props}>
         {children}
       </Link>
+    )
+  }
+  if (href) {
+    return (
+      <a href={href} className={classes} {...props}>
+        {children}
+      </a>
     )
   }
   return (

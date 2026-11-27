@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
-import { CalendarDays, ChevronRight, PackageOpen, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, PackageOpen, RotateCcw, Sparkles } from 'lucide-react'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { useOrders } from '../features/orders/hooks/useOrders'
 import { OrderList } from '../features/orders/components/OrderList'
 import { OrderStatusBadge, STATUS, isActive, stageLabel } from '../features/orders/components/OrderStatusBadge'
 import { BookPickupButton } from '../features/orders/components/BookPickupButton'
+import { BookAgainButton } from '../features/orders/components/BookAgainButton'
 import { useServices } from '../features/services/components/ServiceList'
 import { Card } from '../components/ui/Card'
 import { Skeleton } from '../components/ui/Spinner'
@@ -81,6 +82,23 @@ function NextPickupCard({ order }) {
   )
 }
 
+/** One-tap repeat of the customer's most recent order (same service, address and instructions). */
+function BookUsualCard({ order }) {
+  const a = order.addressSnapshot || {}
+  return (
+    <Card className="flex flex-wrap items-center gap-4 p-5">
+      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700"><RotateCcw className="size-5" aria-hidden /></span>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold">Book your usual</p>
+        <p className="truncate text-sm text-navy-500">
+          {order.items[0].serviceName}{a.addressLine1 ? ` · ${a.addressLine1}` : ''}
+        </p>
+      </div>
+      <BookAgainButton order={order} size="sm" className="w-full min-[420px]:w-auto">Book again</BookAgainButton>
+    </Card>
+  )
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const orders = useOrders({ status: 'all', pageSize: 50 })
@@ -92,6 +110,7 @@ export default function DashboardPage() {
   const nextPickup = active
     .filter((o) => o.currentStatus === 'BOOKED' && new Date(o.pickupScheduledAt) > new Date())
     .sort((a, b) => new Date(a.pickupScheduledAt) - new Date(b.pickupScheduledAt))[0]
+  const lastOrder = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
   const serviceOf = (o) => services.data?.find((s) => s.id === o?.items[0].serviceId)
 
   return (
@@ -119,6 +138,10 @@ export default function DashboardPage() {
               </>
             )}
           </div>
+
+          {!orders.loading && lastOrder && (
+            <div className="animate-fade-up" style={{ animationDelay: '90ms' }}><BookUsualCard order={lastOrder} /></div>
+          )}
 
           <div className="grid animate-fade-up grid-cols-3 gap-3 sm:gap-5" style={{ animationDelay: '120ms' }}>
             {[

@@ -14,6 +14,7 @@ import { EmptyState } from '../../../components/feedback/EmptyState'
 import { ErrorMessage } from '../../../components/feedback/ErrorMessage'
 import { useToast } from '../../../components/feedback/Toast'
 import { api } from '../../../services/api-client'
+import { InstructionChips } from '../../orders/components/InstructionChips'
 
 const empty = {
   label: 'HOME',
@@ -277,7 +278,11 @@ export function AddressForm({ initial, detectedLocation, onSubmit, onCancel, sav
         <Input label="State" value={values.state} onChange={set('state')} error={errors.state} placeholder="Karnataka" autoComplete="address-level1" />
         <Input label="City" required value={values.city} onChange={set('city')} error={errors.city} autoComplete="address-level2" />
         <Input label="Pincode" required inputMode="numeric" maxLength={6} value={values.postalCode} onChange={set('postalCode')} error={errors.postalCode} autoComplete="postal-code" />
-        <Textarea label="Default pickup instructions" value={values.instructions} onChange={set('instructions')} placeholder="Gate number, call on arrival, leave with security…" maxLength={240} className="sm:col-span-2" rows={2} />
+        <div className="sm:col-span-2">
+          <p className="mb-2 text-sm font-medium text-navy-700">Default pickup &amp; delivery instructions</p>
+          <InstructionChips value={values.instructions} onChange={(instructions) => setValues((v) => ({ ...v, instructions }))} />
+          <Textarea aria-label="Default pickup and delivery instructions" value={values.instructions} onChange={set('instructions')} placeholder="Gate number, floor, or anything else our rider should know" maxLength={240} rows={2} hint="Filled in for you each time you book with this address." />
+        </div>
       </div>
 
       <label className="flex items-center gap-2.5 text-sm font-medium">
