@@ -113,4 +113,26 @@ describe('Team and riders', () => {
     assert.equal(fixed.bill.totalPaise, 30000)
     assert.equal(fixed.bill.revision, 2)
   })
+
+  test('customer sees the rider only while the rider is coming to them', async () => {
+    const customer = await signup('cust@example.com')
+    const order = await book(customer)
+    const staff = await signup('staff@example.com', 'STAFF')
+    await signup('ravi@example.com', 'RIDER', 'Ravi')
+    const rider = await User.findOne({ email: 'ravi@example.com' })
+    const view = async () => (await (await get(customer, `/orders/${order.id}`)).json()).data
+
+    assert.equal((await view()).rider, null)
+    await post(staff, `/staff/orders/${order.reference}/rider`, { riderId: String(rider._id) })
+    const booked = await view()
+    assert.deepEqual(booked.rider, { fullName: 'Ravi', phone: '9876543210' })
+    assert.equal(booked.riderId, undefined)
+
+    await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'WASHING' } })
+    assert.equal((await view()).rider, null)
+    await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'OUT_FOR_DELIVERY' } })
+    assert.equal((await view()).rider.fullName, 'Ravi')
+    const tracking = (await (await get(customer, `/orders/${order.id}/tracking`)).json()).data
+    assert.equal(tracking.rider.fullName, 'Ravi')
+  })
 })

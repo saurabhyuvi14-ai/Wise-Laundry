@@ -297,6 +297,7 @@ const orderSchema = new mongoose.Schema(
         delete ret.__v
         delete ret.orderIdString
         delete ret.instructionsEncrypted
+        delete ret.riderId
         return ret
       },
     },

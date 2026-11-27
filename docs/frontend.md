@@ -13,6 +13,7 @@
 - **Team (`/staff/team`, admin only)**: add someone by the email they signed up with, change their role, or remove them (removed riders lose their jobs). `GET/POST /api/v1/staff/team`.
 - **Assign riders**: staff pick a rider on each order card. Orders have `riderId`. `GET /api/v1/staff/riders`, `POST /api/v1/staff/orders/:id/rider`.
 - **Weighing at the doorstep (step 4)**: tapping "Picked up" opens a weight (kg) / item-count box. Riders must fill it; staff can leave it empty to weigh later. The bill is made on the spot and shown to the customer; staff can still correct it in Weigh & bill. `POST /staff/orders/:id/status { from, quantity }`.
+- **Rider details for the customer (step 5)**: while the assigned rider is coming (pickup booked, or out for delivery) the order and tracking pages show their name and a Call button. Hidden at every other step; the raw `riderId` is never sent to customers. Orders/tracking include `rider { fullName, phone }` or `null`.
 - First admin: `npm run make-staff -- you@email.com ADMIN` (once).
 
 ---

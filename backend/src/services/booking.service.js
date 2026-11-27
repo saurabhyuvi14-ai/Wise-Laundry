@@ -1,6 +1,7 @@
 import { Order } from '../models/Order.js'
 import { Address } from '../models/Address.js'
 import { Service } from '../models/Service.js'
+import { User } from '../models/User.js'
 import { reserveSlot, releaseSlot } from './slot.service.js'
 import { assertServiceArea } from './location.service.js'
 import { enforceOwnership } from '../middleware/auth.js'
@@ -149,7 +150,17 @@ export async function getOrderById(userId, idOrRef) {
   }
 
   enforceOwnership(order.userId, userId)
-  return order.toJSON()
+  return { ...order.toJSON(), rider: await riderFor(order) }
+}
+
+/**
+ * The rider's name and phone for the customer, only while the rider is coming to them
+ * (pickup or delivery). Hidden at every other step.
+ */
+export async function riderFor(order) {
+  if (!order.riderId || !['BOOKED', 'OUT_FOR_DELIVERY'].includes(order.currentStatus)) return null
+  const rider = await User.findById(order.riderId).select('fullName phone')
+  return rider ? { fullName: rider.fullName, phone: rider.phone || '' } : null
 }
 
 export async function findOrderByIdOrRef(idOrRef) {
