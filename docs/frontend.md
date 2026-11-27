@@ -5,6 +5,17 @@
 
 ---
 
+## 28 Nov 2026 — Staff & rider panel (steps 1–3)
+
+- **Work list (`/staff`)**: orders grouped as To pick up (Today / Tomorrow, late ones flagged), At the laundry, To deliver — with name, phone, address (opens Maps), Express tag and instructions. `GET /api/v1/staff/work`.
+- **Status buttons**: one tap moves an order to its next step (follows the service's own steps). Double taps are refused; "Out for delivery" needs a bill first. `POST /api/v1/staff/orders/:id/status { from }`.
+- **Roles**: `RIDER` added. One login page for everyone; riders, staff and admins land on `/staff` after login. Riders see only jobs given to them, can mark Picked up / Reached laundry / Out for delivery / Delivered, and can't open customer or staff-only pages.
+- **Team (`/staff/team`, admin only)**: add someone by the email they signed up with, change their role, or remove them (removed riders lose their jobs). `GET/POST /api/v1/staff/team`.
+- **Assign riders**: staff pick a rider on each order card. Orders have `riderId`. `GET /api/v1/staff/riders`, `POST /api/v1/staff/orders/:id/rider`.
+- First admin: `npm run make-staff -- you@email.com ADMIN` (once).
+
+---
+
 ## 27 Nov 2026 — Express delivery
 
 **Branch:** `feature/express-delivery`

@@ -8,16 +8,17 @@ import { NotificationBell } from '../../features/notifications/components/Notifi
 
 export function MobileTopBar() {
   const { user } = useAuth()
+  const isRider = user?.role === 'RIDER'
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:hidden">
-      <Logo to="/customer" className="[&_span]:text-[15px] [&_svg]:size-8" />
+      <Logo to={isRider ? '/staff' : '/customer'} className="[&_span]:text-[15px] [&_svg]:size-8" />
       <div className="flex items-center gap-1">
-        {['STAFF', 'ADMIN'].includes(user?.role) && (
+        {['RIDER', 'STAFF', 'ADMIN'].includes(user?.role) && (
           <Link to="/staff" aria-label="Staff work list" className="grid size-9 place-items-center rounded-full text-navy-700 hover:bg-canvas">
             <ClipboardList className="size-5" aria-hidden />
           </Link>
         )}
-        <NotificationBell />
+        {!isRider && <NotificationBell />}
         <Link to="/customer/help" aria-label="Help and support" className="grid size-9 place-items-center rounded-full text-navy-700 hover:bg-canvas">
           <LifeBuoy className="size-5" aria-hidden />
         </Link>
@@ -49,9 +50,11 @@ function Tab({ to, label, icon: Icon, active }) {
 
 /** Phone tab bar: Dashboard · My Orders · [+] · Tracking · Profile */
 export function MobileNav() {
+  const { user } = useAuth()
   const { pathname } = useLocation()
   const current = activeNavItem(pathname)
   const [dash, orders, tracking, profile] = customerNav
+  if (user?.role === 'RIDER') return null
 
   return (
     <nav

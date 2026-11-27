@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/Button'
 import { FieldShell, control } from '../../../components/ui/Input'
 import { useAuth } from '../hooks/useAuth'
 import { cn } from '../../../utils/cn'
-import { safeRedirect } from '../../../utils/bookingValidation'
+import { safeRedirect, homeFor } from '../../../utils/bookingValidation'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
@@ -90,7 +90,7 @@ export function GoogleSignIn({ mode = 'signin', header, children }) {
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState('')
 
-  const done = () => navigate(safeRedirect(params.get('redirect')), { replace: true })
+  const done = (me) => navigate(safeRedirect(params.get('redirect'), homeFor(me)), { replace: true })
 
   // Stable references so the Google button isn't redrawn on every keystroke.
   const handlers = useRef({})
@@ -103,7 +103,7 @@ export function GoogleSignIn({ mode = 'signin', header, children }) {
         setNewPerson({ credential, profile: res.profile })
         setPending(false)
       } else {
-        done()
+        done(res.user)
       }
     } catch (err) {
       setError(err.message || 'Google sign-in failed. Please try again.')

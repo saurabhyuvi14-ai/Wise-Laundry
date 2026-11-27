@@ -18,6 +18,9 @@ export function validate(values, schema) {
 }
 
 /** Only allow internal paths as post-login redirects. */
+/** Where someone goes after logging in: team members to their work list, customers to the dashboard. */
+export const homeFor = (user) => (['RIDER', 'STAFF', 'ADMIN'].includes(user?.role) ? '/staff' : '/customer')
+
 export function safeRedirect(path, fallback = '/customer') {
   if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return fallback
   return path

@@ -1,12 +1,12 @@
 import { Outlet, Navigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '../components/navigation/Navbar'
 import { useAuth } from '../features/auth/hooks/useAuth'
-import { safeRedirect } from '../utils/bookingValidation'
+import { safeRedirect, homeFor } from '../utils/bookingValidation'
 
 export function AuthLayout() {
   const { user, status } = useAuth()
   const [params] = useSearchParams()
-  if (status === 'ready' && user) return <Navigate to={safeRedirect(params.get('redirect'))} replace />
+  if (status === 'ready' && user) return <Navigate to={safeRedirect(params.get('redirect'), homeFor(user))} replace />
 
   return (
     <div className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">

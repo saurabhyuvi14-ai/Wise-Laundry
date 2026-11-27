@@ -186,6 +186,8 @@ const orderSchema = new mongoose.Schema(
       cancelledAt: { type: Date, default: null },
       cancelledBy: { type: String, default: null },
     },
+    // Rider doing the current pickup or delivery (set by staff).
+    riderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     // Customer's rating after delivery (one per order), plus an optional problem report.
     feedback: {
       rating: { type: Number, min: 1, max: 5, default: null },

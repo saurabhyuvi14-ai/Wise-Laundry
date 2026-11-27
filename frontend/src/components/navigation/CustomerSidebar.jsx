@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale, LifeBuoy, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale, LifeBuoy, ClipboardList, Users } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
@@ -23,29 +23,43 @@ export function activeNavItem(pathname) {
   if (pathname.startsWith(BOOK_PATH)) return BOOK_PATH
   if (pathname === '/customer' || pathname === '/customer/') return '/customer'
   if (pathname.startsWith('/staff/bill')) return '/staff/bill'
+  if (pathname.startsWith('/staff/team')) return '/staff/team'
   if (pathname === '/staff' || pathname === '/staff/') return '/staff'
   return null
+}
+
+/** Menu for each kind of account. Riders only get their jobs. */
+export function navFor(role) {
+  if (role === 'RIDER') return [{ to: '/staff', label: 'My jobs', icon: ClipboardList }]
+  if (!['STAFF', 'ADMIN'].includes(role)) return customerNav
+  return [
+    ...customerNav,
+    { to: '/staff', label: 'Work list', icon: ClipboardList },
+    { to: '/staff/bill', label: 'Weigh & bill', icon: Scale },
+    ...(role === 'ADMIN' ? [{ to: '/staff/team', label: 'Team', icon: Users }] : []),
+  ]
 }
 
 export function CustomerSidebar() {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
   const current = activeNavItem(pathname)
+  const isRider = user?.role === 'RIDER'
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-white px-4 py-6 lg:flex">
-      <Logo to="/customer" className="px-3" />
+      <Logo to={isRider ? '/staff' : '/customer'} className="px-3" />
 
-      <Link
+      {!isRider && <Link
         to={BOOK_PATH}
         aria-current={current === BOOK_PATH ? 'page' : undefined}
         className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
       >
         <BookIcon className="size-4" strokeWidth={2.5} aria-hidden /> Book a Pickup
-      </Link>
+      </Link>}
 
       <nav aria-label="Main" className="mt-6 flex flex-col gap-1">
-        {[...customerNav, ...(['STAFF', 'ADMIN'].includes(user?.role) ? [{ to: '/staff', label: 'Work list', icon: ClipboardList }, { to: '/staff/bill', label: 'Weigh & bill', icon: Scale }] : [])].map(({ to, label, icon: Icon }) => {
+        {navFor(user?.role).map(({ to, label, icon: Icon }) => {
           const active = current === to
           return (
             <NavLink
@@ -62,7 +76,7 @@ export function CustomerSidebar() {
             </NavLink>
           )
         })}
-        <NotificationBell withLabel />
+        {!isRider && <NotificationBell withLabel />}
       </nav>
 
       <NavLink

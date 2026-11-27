@@ -5,7 +5,7 @@ import { Input, FieldShell, control } from '../../../components/ui/Input'
 import { Button } from '../../../components/ui/Button'
 import { useAuth } from '../hooks/useAuth'
 import { cn } from '../../../utils/cn'
-import { isPhone, safeRedirect } from '../../../utils/bookingValidation'
+import { isPhone, safeRedirect, homeFor } from '../../../utils/bookingValidation'
 
 const CODE_LENGTH = 6
 const digitsOnly = (v) => v.replace(/\D/g, '')
@@ -120,7 +120,7 @@ export function OtpLoginForm() {
   const secondsLeft = useCountdown(resendAt)
 
   const tenDigits = digitsOnly(phone).slice(-10)
-  const done = () => navigate(safeRedirect(params.get('redirect')), { replace: true })
+  const done = (me) => navigate(safeRedirect(params.get('redirect'), homeFor(me)), { replace: true })
 
   function fail(err) {
     // Show the message under the field it belongs to, or as a banner if it isn't about one field.
@@ -165,7 +165,7 @@ export function OtpLoginForm() {
         setStep('name')
         setPending(false)
       } else {
-        done()
+        done(res.user)
       }
     } catch (err) {
       setCode('')

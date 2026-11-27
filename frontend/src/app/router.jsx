@@ -54,6 +54,7 @@ const routes = [
     children: [
       { index: true, element: page(() => import('../pages/StaffWorkPage')) },
       { path: 'bill', element: page(() => import('../pages/StaffBillingPage')) },
+      { path: 'team', element: page(() => import('../pages/TeamPage')) },
     ],
   },
   { path: '*', element: page(() => import('../pages/NotFoundPage')) },

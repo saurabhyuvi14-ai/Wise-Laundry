@@ -1,12 +1,12 @@
 // Usage: npm run make-staff -- someone@example.com        (make staff)
-//        npm run make-staff -- someone@example.com CUSTOMER (undo)
+//        npm run make-staff -- someone@example.com RIDER|ADMIN|CUSTOMER
 import mongoose from 'mongoose'
 import { config } from '../src/config/env.js'
 import { User } from '../src/models/User.js'
 
 const [email, role = 'STAFF'] = process.argv.slice(2)
-if (!email || !['STAFF', 'ADMIN', 'CUSTOMER'].includes(role)) {
-  console.log('Usage: npm run make-staff -- someone@example.com [STAFF|ADMIN|CUSTOMER]')
+if (!email || !['STAFF', 'ADMIN', 'RIDER', 'CUSTOMER'].includes(role)) {
+  console.log('Usage: npm run make-staff -- someone@example.com [STAFF|ADMIN|RIDER|CUSTOMER]')
   process.exit(1)
 }
 

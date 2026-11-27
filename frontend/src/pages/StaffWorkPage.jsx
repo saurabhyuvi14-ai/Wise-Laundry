@@ -17,6 +17,9 @@ import { cn } from '../utils/cn'
 const REFRESH_MS = 60_000
 
 // Button text for moving an order to each status.
+// Steps riders can mark themselves (the server checks this too).
+const RIDER_STEPS = ['PICKED_UP', 'RECEIVED', 'OUT_FOR_DELIVERY', 'DELIVERED']
+
 const ACTION = {
   PICKED_UP: 'Picked up',
   RECEIVED: 'Reached laundry',
@@ -42,7 +45,7 @@ function mapsLink(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
 }
 
-function WorkCard({ c, group, index, onAdvance, moving }) {
+function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRider }) {
   const unit = c.pricingUnit === 'KG' ? 'kg' : 'items'
   return (
     <li className="animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
@@ -91,7 +94,7 @@ function WorkCard({ c, group, index, onAdvance, moving }) {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-          {c.nextStatus && (
+          {c.nextStatus && (!isRider || RIDER_STEPS.includes(c.nextStatus)) && (
             c.nextStatus === 'OUT_FOR_DELIVERY' && !c.billed ? (
               <span className="text-xs font-semibold text-amber-700">Weigh & bill before sending out</span>
             ) : (
@@ -100,7 +103,18 @@ function WorkCard({ c, group, index, onAdvance, moving }) {
               </Button>
             )
           )}
-          {group !== 'toPickup' && (
+          {riders && (
+            <select
+              value={c.rider?.id ?? ''}
+              onChange={(e) => onAssign(c, e.target.value || null)}
+              aria-label={`Rider for ${c.reference}`}
+              className="h-9 max-w-40 rounded-lg border border-line bg-white px-2 text-sm text-navy-700"
+            >
+              <option value="">No rider</option>
+              {riders.map((r) => <option key={r.id} value={r.id}>{r.fullName}</option>)}
+            </select>
+          )}
+          {!isRider && group !== 'toPickup' && (
             <Button to={`/staff/bill?ref=${encodeURIComponent(c.reference)}`} variant="ghost" size="sm" className="ml-auto">
               <Scale className="size-4" aria-hidden /> {c.billed ? 'Check bill' : 'Weigh & bill'}
             </Button>
@@ -120,7 +134,9 @@ export default function StaffWorkPage() {
   const [loading, setLoading] = useState(true)
   const [moving, setMoving] = useState(null) // order id being updated
   const toast = useToast()
-  const isStaff = ['STAFF', 'ADMIN'].includes(user?.role)
+  const isRider = user?.role === 'RIDER'
+  const isStaff = isRider || ['STAFF', 'ADMIN'].includes(user?.role)
+  const [riders, setRiders] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -137,10 +153,11 @@ export default function StaffWorkPage() {
 
   useEffect(() => {
     if (!isStaff) return
+    if (!isRider) api.staffRiders().then((r) => setRiders(r.data)).catch(() => {})
     load()
     const t = setInterval(() => { if (document.visibilityState === 'visible') load() }, REFRESH_MS)
     return () => clearInterval(t)
-  }, [load, isStaff])
+  }, [load, isStaff, isRider])
 
   async function advance(c) {
     setMoving(c.id)
@@ -153,6 +170,16 @@ export default function StaffWorkPage() {
       setMoving(null)
       load()
     }
+  }
+
+  async function assign(c, riderId) {
+    try {
+      await api.staffAssignRider(c.reference, riderId)
+      toast(riderId ? `${c.reference} given to ${riders.find((r) => r.id === riderId)?.fullName}` : `${c.reference}: rider removed`)
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+    load()
   }
 
   if (user && !isStaff) {
@@ -174,8 +201,8 @@ export default function StaffWorkPage() {
   return (
     <>
       <PageHeader
-        title="Work list"
-        description="Pickups for the day, what's in the wash, and what's out for delivery. Updates every minute."
+        title={isRider ? 'My jobs' : 'Work list'}
+        description={isRider ? 'Pickups and deliveries given to you. Updates every minute.' : "Pickups for the day, what's in the wash, and what's out for delivery. Updates every minute."}
         action={
           <Button variant="secondary" size="sm" onClick={load} loading={loading && Boolean(data)}>
             <RefreshCw className="size-4" aria-hidden /> Refresh
@@ -212,7 +239,7 @@ export default function StaffWorkPage() {
                   <span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-bold text-navy-700">{list.length}</span>
                 </h2>
                 {list.length ? (
-                  <ul className="space-y-3">{list.map((c, i) => <WorkCard key={c.id} c={c} group={key} index={i} onAdvance={advance} moving={moving === c.id} />)}</ul>
+                  <ul className="space-y-3">{list.map((c, i) => <WorkCard key={c.id} c={c} group={key} index={i} onAdvance={advance} moving={moving === c.id} riders={riders} onAssign={assign} isRider={isRider} />)}</ul>
                 ) : (
                   <Card className="p-5 text-sm text-navy-500"><ClipboardList className="mb-2 size-5 text-navy-400" aria-hidden />{empty}</Card>
                 )}

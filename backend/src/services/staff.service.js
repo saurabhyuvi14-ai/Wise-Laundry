@@ -81,7 +81,7 @@ export function istDayRange(day) {
   return { key, start, end: new Date(start.getTime() + 24 * 3600000) }
 }
 
-function workCard(order, customer, service) {
+function workCard(order, customer, service, rider) {
   const o = order.toJSON()
   const a = o.addressSnapshot || {}
   return {
@@ -98,6 +98,7 @@ function workCard(order, customer, service) {
     estimatedDeliveryAt: o.estimatedDeliveryAt || null,
     instructions: o.instructions || '',
     billed: Boolean(o.bill),
+    rider: rider ? { id: String(rider._id), fullName: rider.fullName } : null,
     customer: {
       fullName: customer?.fullName || a.recipientName || 'Customer',
       phone: a.phone || customer?.phone || '',
@@ -119,22 +120,25 @@ function workCard(order, customer, service) {
  * - atLaundry: collected and not yet sent out (any day), express first
  * - toDeliver: out for delivery right now
  */
-export async function getWorkList({ day } = {}) {
+export async function getWorkList(user, { day } = {}) {
   const { key, start, end } = istDayRange(day)
   const today = istDayRange().key
   const pickupWhen = key === today ? { $lt: end } : { $gte: start, $lt: end }
+  // Riders only see the jobs given to them.
+  const mine = user.role === 'RIDER' ? { riderId: user._id } : {}
 
   const [pickups, laundry, deliveries] = await Promise.all([
-    Order.find({ currentStatus: 'BOOKED', pickupScheduledAt: pickupWhen }).sort({ pickupScheduledAt: 1 }).limit(200),
-    Order.find({ currentStatus: { $in: AT_LAUNDRY } }).sort({ estimatedDeliveryAt: 1, pickupScheduledAt: 1 }).limit(200),
-    Order.find({ currentStatus: 'OUT_FOR_DELIVERY' }).sort({ updatedAt: 1 }).limit(200),
+    Order.find({ ...mine, currentStatus: 'BOOKED', pickupScheduledAt: pickupWhen }).sort({ pickupScheduledAt: 1 }).limit(200),
+    Order.find({ ...mine, currentStatus: { $in: AT_LAUNDRY } }).sort({ estimatedDeliveryAt: 1, pickupScheduledAt: 1 }).limit(200),
+    Order.find({ ...mine, currentStatus: 'OUT_FOR_DELIVERY' }).sort({ updatedAt: 1 }).limit(200),
   ])
 
-  const userIds = [...new Set([...pickups, ...laundry, ...deliveries].map((o) => String(o.userId)))]
-  const [users, services] = await Promise.all([User.find({ _id: { $in: userIds } }).select('fullName phone'), Service.find()])
-  const byId = new Map(users.map((u) => [String(u._id), u]))
+  const all = [...pickups, ...laundry, ...deliveries]
+  const peopleIds = [...new Set(all.flatMap((o) => [String(o.userId), o.riderId && String(o.riderId)]).filter(Boolean))]
+  const [people, services] = await Promise.all([User.find({ _id: { $in: peopleIds } }).select('fullName phone'), Service.find()])
+  const byId = new Map(people.map((u) => [String(u._id), u]))
   const serviceById = new Map(services.map((s) => [s.serviceId, s]))
-  const card = (o) => workCard(o, byId.get(String(o.userId)), serviceById.get(o.items[0]?.serviceId))
+  const card = (o) => workCard(o, byId.get(String(o.userId)), serviceById.get(o.items[0]?.serviceId), o.riderId && byId.get(String(o.riderId)))
 
   const expressFirst = (a, b) => Number(Boolean(b.express)) - Number(Boolean(a.express))
   const toPickup = pickups.map(card).map((c) => ({ ...c, late: new Date(c.pickupScheduledAt) < start }))
@@ -147,6 +151,9 @@ export async function getWorkList({ day } = {}) {
 }
 
 // ---------- Status buttons ----------
+
+// Steps a rider can mark; the washing steps are for laundry staff.
+const RIDER_STEPS = ['PICKED_UP', 'RECEIVED', 'OUT_FOR_DELIVERY', 'DELIVERED']
 
 /** The status after the order's current one, following its service's steps; null at the end. */
 function nextStage(order, service) {
@@ -161,6 +168,9 @@ function nextStage(order, service) {
  */
 export async function advanceStatus(staffUser, idOrRef, { from }) {
   const order = await loadOrder(idOrRef)
+  if (staffUser.role === 'RIDER' && String(order.riderId) !== String(staffUser._id)) {
+    throw ApiError.forbidden('This job is not assigned to you.')
+  }
   if (order.currentStatus !== from) {
     throw new ApiError(409, 'ORDER_CHANGED', 'Someone already updated this order. Refresh to see the latest.')
   }
@@ -168,6 +178,9 @@ export async function advanceStatus(staffUser, idOrRef, { from }) {
   const next = nextStage(order, service)
   if (!next || order.currentStatus === 'CANCELLED') {
     throw new ApiError(409, 'ORDER_FINISHED', 'This order has no next step.')
+  }
+  if (staffUser.role === 'RIDER' && !RIDER_STEPS.includes(next)) {
+    throw ApiError.forbidden('Only laundry staff can do this step.')
   }
   if (next === 'OUT_FOR_DELIVERY' && !order.bill?.finalizedAt) {
     throw new ApiError(409, 'NOT_BILLED', 'Weigh and bill this order before sending it out.')
@@ -186,4 +199,42 @@ export async function advanceStatus(staffUser, idOrRef, { from }) {
   )
   if (!updated) throw new ApiError(409, 'ORDER_CHANGED', 'Someone already updated this order. Refresh to see the latest.')
   return updated.toJSON()
+}
+
+// ---------- Riders and team ----------
+
+export async function listRiders() {
+  const riders = await User.find({ role: 'RIDER' }).select('fullName phone').sort({ fullName: 1 })
+  return riders.map((r) => ({ id: String(r._id), fullName: r.fullName, phone: r.phone || '' }))
+}
+
+/** Give an order to a rider, or take it back (riderId null). */
+export async function assignRider(idOrRef, { riderId }) {
+  const order = await loadOrder(idOrRef)
+  if (riderId) {
+    const rider = await User.findOne({ _id: riderId, role: 'RIDER' })
+    if (!rider) throw ApiError.badRequest('That person is not a rider.', { riderId: 'Pick a rider.' })
+  }
+  order.riderId = riderId || null
+  await order.save()
+  return order.toJSON()
+}
+
+const TEAM_ROLES = ['RIDER', 'STAFF', 'ADMIN']
+
+export async function listTeam() {
+  const team = await User.find({ role: { $in: TEAM_ROLES } }).select('fullName email phone role').sort({ role: 1, fullName: 1 })
+  return team.map((u) => ({ id: String(u._id), fullName: u.fullName, email: u.email, phone: u.phone || '', role: u.role }))
+}
+
+/** Admin gives someone a team role by email, or sets them back to CUSTOMER to remove them. */
+export async function setRole(admin, { email, role }) {
+  const user = await User.findOne({ email: email.trim().toLowerCase() })
+  if (!user) throw ApiError.badRequest('No account with that email. Ask them to sign up first.', { email: 'Not found.' })
+  if (String(user._id) === String(admin._id)) throw ApiError.badRequest("You can't change your own role.", { email: 'This is you.' })
+  user.role = role
+  await user.save()
+  // A rider who is removed shouldn't keep jobs.
+  if (role !== 'RIDER') await Order.updateMany({ riderId: user._id }, { $set: { riderId: null } })
+  return { id: String(user._id), fullName: user.fullName, email: user.email, phone: user.phone || '', role: user.role }
 }

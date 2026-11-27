@@ -93,6 +93,10 @@ export function CustomerLayout() {
     const redirect = encodeURIComponent(location.pathname + location.search)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
+  // Riders only use their jobs screen (plus profile and help).
+  if (user?.role === 'RIDER' && !/^\/(staff|customer\/(profile|help))/.test(location.pathname)) {
+    return <Navigate to="/staff" replace />
+  }
 
   const shell = (
     <div className="flex min-h-dvh bg-canvas print:bg-white">

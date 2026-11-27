@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Input, PasswordInput } from '../../../components/ui/Input'
 import { Button } from '../../../components/ui/Button'
 import { useAuth } from '../hooks/useAuth'
-import { validate, required, isEmail, safeRedirect } from '../../../utils/bookingValidation'
+import { validate, required, isEmail, safeRedirect, homeFor } from '../../../utils/bookingValidation'
 // OTP login is switched off until the backend has the OTP endpoints. To turn it on, remove the
 // comments marked "OTP" in this file.
 // OTP: import { OtpLoginForm } from './OtpLoginForm'
@@ -34,8 +34,8 @@ export function EmailLoginForm() {
     setPending(true)
     setFormError('')
     try {
-      await login(body)
-      navigate(safeRedirect(params.get('redirect')), { replace: true })
+      const me = await login(body)
+      navigate(safeRedirect(params.get('redirect'), homeFor(me)), { replace: true })
     } catch (err) {
       setFormError(err.message)
       setPending(false)

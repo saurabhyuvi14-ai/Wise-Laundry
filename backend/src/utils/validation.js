@@ -204,3 +204,12 @@ export const expressSwitchSchema = z.object({
 export const advanceStatusSchema = z.object({
   from: z.string({ required_error: 'Missing current status.' }).min(1),
 })
+
+export const assignRiderSchema = z.object({
+  riderId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Pick a rider.').nullable(),
+})
+
+export const setRoleSchema = z.object({
+  email: z.string().trim().email('Enter a valid email.'),
+  role: z.enum(['CUSTOMER', 'RIDER', 'STAFF', 'ADMIN'], { errorMap: () => ({ message: 'Pick a role.' }) }),
+})
