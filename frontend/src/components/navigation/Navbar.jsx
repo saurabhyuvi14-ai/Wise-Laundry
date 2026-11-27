@@ -28,7 +28,7 @@ export function Logo({ to = '/', className }) {
 }
 
 export function Navbar() {
-  const { user } = useAuth()
+  const { user, status } = useAuth()
   const link = ({ isActive }) => cn('text-sm font-medium transition hover:text-navy-900', isActive ? 'text-navy-900' : 'text-navy-500')
 
   return (
@@ -38,7 +38,10 @@ export function Navbar() {
         <nav aria-label="Main" className="flex items-center gap-3 sm:gap-7">
           <NavLink to="/" end className={(s) => cn(link(s), 'hidden sm:inline')}>Home</NavLink>
           <NavLink to="/services" className={(s) => cn(link(s), 'hidden min-[400px]:inline')}>Services</NavLink>
-          {user ? (
+          {status === 'loading' ? (
+            // While we check if you're signed in, keep the space empty so "Log in" doesn't flash.
+            <span className="h-9 w-28 animate-pulse rounded-xl bg-canvas" aria-hidden />
+          ) : user ? (
             <Button to="/customer" size="sm" className="whitespace-nowrap">Dashboard</Button>
           ) : (
             <>
