@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Search, Scale, ShieldAlert } from 'lucide-react'
 import { api } from '../services/api-client'
 import { useAuth } from '../features/auth/hooks/useAuth'
@@ -25,6 +26,16 @@ export default function StaffBillingPage() {
   const [quantity, setQuantity] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [params] = useSearchParams()
+  const fromLink = params.get('ref')
+
+  // Opened from the work list with ?ref=WL-1001: look that order up straight away.
+  useEffect(() => {
+    if (!fromLink) return
+    setRef(fromLink)
+    find(null, fromLink)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromLink])
 
   if (user && !['STAFF', 'ADMIN'].includes(user.role)) {
     return (
@@ -37,13 +48,13 @@ export default function StaffBillingPage() {
     )
   }
 
-  async function find(e) {
-    e.preventDefault()
-    if (!ref.trim()) return setError('Enter an order number, like WL-1001.')
+  async function find(e, value = ref) {
+    e?.preventDefault()
+    if (!value.trim()) return setError('Enter an order number, like WL-1001.')
     setBusy(true)
     setError(null)
     try {
-      const res = await api.staffGetOrder(ref.trim())
+      const res = await api.staffGetOrder(value.trim())
       setOrder(res.data)
       setQuantity(res.data.items[0].quantity ?? '')
     } catch (err) {

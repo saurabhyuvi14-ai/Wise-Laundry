@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale, LifeBuoy } from 'lucide-react'
+import { LayoutDashboard, Package, MapPin, UserRound, Plus, LogOut, Scale, LifeBuoy, ClipboardList } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
@@ -22,6 +22,8 @@ export function activeNavItem(pathname) {
   if (pathname.startsWith('/customer/profile')) return '/customer/profile'
   if (pathname.startsWith(BOOK_PATH)) return BOOK_PATH
   if (pathname === '/customer' || pathname === '/customer/') return '/customer'
+  if (pathname.startsWith('/staff/bill')) return '/staff/bill'
+  if (pathname === '/staff' || pathname === '/staff/') return '/staff'
   return null
 }
 
@@ -43,7 +45,7 @@ export function CustomerSidebar() {
       </Link>
 
       <nav aria-label="Main" className="mt-6 flex flex-col gap-1">
-        {[...customerNav, ...(['STAFF', 'ADMIN'].includes(user?.role) ? [{ to: '/staff', label: 'Weigh & bill', icon: Scale }] : [])].map(({ to, label, icon: Icon }) => {
+        {[...customerNav, ...(['STAFF', 'ADMIN'].includes(user?.role) ? [{ to: '/staff', label: 'Work list', icon: ClipboardList }, { to: '/staff/bill', label: 'Weigh & bill', icon: Scale }] : [])].map(({ to, label, icon: Icon }) => {
           const active = current === to
           return (
             <NavLink

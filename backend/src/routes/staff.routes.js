@@ -10,6 +10,7 @@ router.use(requireAuth)
 router.use(requireRole('STAFF', 'ADMIN'))
 router.use(privateCacheControl)
 
+router.get('/work', staffController.getWorkList)
 router.get('/orders/:id', staffController.getOrder)
 router.post('/orders/:id/bill', staffController.saveBill)
 

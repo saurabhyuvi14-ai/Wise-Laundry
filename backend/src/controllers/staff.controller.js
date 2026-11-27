@@ -17,3 +17,11 @@ export async function saveBill(req, res, next) {
     next(err)
   }
 }
+
+export async function getWorkList(req, res, next) {
+  try {
+    return res.json({ data: await staffService.getWorkList({ day: req.query.day }) })
+  } catch (err) {
+    next(err)
+  }
+}
