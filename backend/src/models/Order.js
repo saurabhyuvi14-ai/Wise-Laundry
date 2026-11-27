@@ -186,6 +186,9 @@ const orderSchema = new mongoose.Schema(
       cancelledAt: { type: Date, default: null },
       cancelledBy: { type: String, default: null },
     },
+    // 4-digit code the customer gives the rider at delivery (stored encrypted), and wrong tries.
+    deliveryCodeEncrypted: { type: String, default: null },
+    deliveryCodeTries: { type: Number, default: 0 },
     // Rider doing the current pickup or delivery (set by staff).
     riderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     // Customer's rating after delivery (one per order), plus an optional problem report.
@@ -298,6 +301,8 @@ const orderSchema = new mongoose.Schema(
         delete ret.orderIdString
         delete ret.instructionsEncrypted
         delete ret.riderId
+        delete ret.deliveryCodeEncrypted
+        delete ret.deliveryCodeTries
         return ret
       },
     },

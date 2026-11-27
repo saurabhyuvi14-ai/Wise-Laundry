@@ -100,7 +100,7 @@ describe('Staff work list', () => {
     assert.equal((await (await move('WASHING')).json()).data.currentStatus, 'OUT_FOR_DELIVERY')
     const done = (await (await move('OUT_FOR_DELIVERY')).json()).data
     assert.equal(done.currentStatus, 'DELIVERED')
-    assert.equal(done.statusHistory.at(-1).note, 'Updated by Work Tester.')
+    assert.equal(done.statusHistory.at(-1).note, 'Handed over without the delivery code by Work Tester.')
     assert.equal((await move('DELIVERED')).status, 409)
   })
 

@@ -26,3 +26,15 @@ export function RiderCard({ rider, status }) {
     </Card>
   )
 }
+
+/** The 4-digit code the customer reads out to the rider at delivery. */
+export function DeliveryCode({ code }) {
+  if (!code) return null
+  return (
+    <Card className="animate-fade-up border-amber-200 bg-amber-50/60 p-5 text-center">
+      <p className="text-sm font-semibold text-amber-900">Delivery code</p>
+      <p className="mt-1 font-mono text-4xl font-extrabold tracking-[0.35em] text-navy-900" aria-label={`Delivery code ${code.split('').join(' ')}`}>{code}</p>
+      <p className="mt-2 text-sm text-navy-700">Tell this to the rider when they hand over your clothes. Don't share it before.</p>
+    </Card>
+  )
+}

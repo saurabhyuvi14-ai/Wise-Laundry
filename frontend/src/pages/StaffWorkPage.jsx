@@ -48,9 +48,14 @@ function mapsLink(address) {
 
 function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRider }) {
   const unit = c.pricingUnit === 'KG' ? 'kg' : 'items'
-  // Picking up opens a small box to enter the weight/count at the door.
-  const [weighing, setWeighing] = useState(false)
-  const [quantity, setQuantity] = useState('')
+  // Picking up asks for the weight/count; delivering asks for the customer's code.
+  const [asking, setAsking] = useState(false)
+  const [value, setValue] = useState('')
+  const ask = c.nextStatus === 'DELIVERED'
+    ? { label: "Customer's 4-digit code", inputMode: 'numeric', maxLength: 4, pattern: '\\d{4}', placeholder: 'e.g. 4821', submit: 'Confirm delivery', hint: 'Leave empty to hand over without a code (this is noted).' }
+    : c.pricingUnit === 'KG'
+      ? { label: 'Weight (kg)', type: 'number', inputMode: 'decimal', step: '0.1', min: '0.1', placeholder: 'e.g. 4.5', submit: 'Save & pick up', hint: 'Leave empty to weigh later at the laundry.' }
+      : { label: 'Number of items', type: 'number', inputMode: 'numeric', step: '1', min: '1', placeholder: 'e.g. 12', submit: 'Save & pick up', hint: 'Leave empty to count later at the laundry.' }
   return (
     <li className="animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
       <Card className={cn('p-4 transition hover:-translate-y-0.5 hover:shadow-md', c.express && 'border-amber-300', c.late && 'border-red-300')}>
@@ -97,38 +102,40 @@ function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRide
           )}
         </div>
 
-        {weighing && (
+        {asking && (
           <form
-            onSubmit={(e) => { e.preventDefault(); onAdvance(c, quantity === '' ? undefined : quantity) }}
+            onSubmit={(e) => { e.preventDefault(); onAdvance(c, value.trim() || undefined) }}
             className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-canvas p-3 animate-fade-up"
           >
-            <label className="min-w-0 flex-1 text-sm font-medium">
-              {c.pricingUnit === 'KG' ? 'Weight (kg)' : 'Number of items'}
+            <label className="min-w-44 flex-1 text-sm font-medium">
+              {ask.label}
               <input
-                type="number"
-                inputMode="decimal"
-                step={c.pricingUnit === 'KG' ? '0.1' : '1'}
-                min={c.pricingUnit === 'KG' ? '0.1' : '1'}
+                type={ask.type}
+                inputMode={ask.inputMode}
+                step={ask.step}
+                min={ask.min}
+                maxLength={ask.maxLength}
+                pattern={ask.pattern}
                 required={isRider}
                 autoFocus
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder={c.pricingUnit === 'KG' ? 'e.g. 4.5' : 'e.g. 12'}
-                className="mt-1 h-10 w-full rounded-lg border border-line bg-white px-3 text-base"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder={ask.placeholder}
+                className="mt-1 h-10 w-full rounded-lg border border-line bg-white px-3 text-base tracking-wide"
               />
             </label>
-            <Button type="submit" size="sm" loading={moving}>Save & pick up</Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setWeighing(false)}>Cancel</Button>
-            {!isRider && <p className="w-full text-xs text-navy-500">Leave empty to weigh later at the laundry.</p>}
+            <Button type="submit" size="sm" loading={moving}>{ask.submit}</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setAsking(false)}>Cancel</Button>
+            {!isRider && <p className="w-full text-xs text-navy-500">{ask.hint}</p>}
           </form>
         )}
 
-        {!weighing && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        {!asking && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
           {c.nextStatus && (!isRider || RIDER_STEPS.includes(c.nextStatus)) && (
             c.nextStatus === 'OUT_FOR_DELIVERY' && !c.billed ? (
               <span className="text-xs font-semibold text-amber-700">Weigh & bill before sending out</span>
             ) : (
-              <Button size="sm" loading={moving} onClick={() => (c.nextStatus === 'PICKED_UP' ? setWeighing(true) : onAdvance(c))}>
+              <Button size="sm" loading={moving} onClick={() => (['PICKED_UP', 'DELIVERED'].includes(c.nextStatus) ? setAsking(true) : onAdvance(c))}>
                 <Check className="size-4" aria-hidden /> {ACTION[c.nextStatus]}
               </Button>
             )
@@ -193,10 +200,11 @@ export default function StaffWorkPage() {
     return () => clearInterval(t)
   }, [load, isStaff, isRider])
 
-  async function advance(c, quantity) {
+  async function advance(c, input) {
     setMoving(c.id)
     try {
-      const res = await api.staffAdvanceStatus(c.reference, c.status, quantity)
+      const extra = c.nextStatus === 'DELIVERED' ? { code: input } : { quantity: input }
+      const res = await api.staffAdvanceStatus(c.reference, c.status, extra)
       const total = c.nextStatus === 'PICKED_UP' && res.data.bill ? ` · bill ${formatCurrency(res.data.bill.totalPaise)}` : ''
       toast(`${c.reference}: ${ACTION[c.nextStatus]}${total}`)
     } catch (err) {

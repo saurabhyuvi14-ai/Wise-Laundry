@@ -135,4 +135,52 @@ describe('Team and riders', () => {
     const tracking = (await (await get(customer, `/orders/${order.id}/tracking`)).json()).data
     assert.equal(tracking.rider.fullName, 'Ravi')
   })
+
+  test('delivery needs the customer\'s 4-digit code from the rider', async () => {
+    const customer = await signup('cust@example.com')
+    const order = await book(customer)
+    const staff = await signup('staff@example.com', 'STAFF')
+    await signup('ravi@example.com', 'RIDER', 'Ravi')
+    const riderUser = await User.findOne({ email: 'ravi@example.com' })
+    const login = await fetch(`${baseUrl}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' }, body: JSON.stringify({ email: 'ravi@example.com', password: 'Password123!' }) })
+    const rider = login.headers.getSetCookie().find((c) => c.startsWith('wise_session=')).split(';')[0]
+    await post(staff, `/staff/orders/${order.reference}/rider`, { riderId: String(riderUser._id) })
+    await post(rider, `/staff/orders/${order.reference}/status`, { from: 'BOOKED', quantity: 3 })
+    await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'WASHING' } })
+    await post(staff, `/staff/orders/${order.reference}/status`, { from: 'WASHING' })
+
+    const view = async (path = '') => (await (await get(customer, `/orders/${order.id}${path}`)).json()).data
+    const { deliveryCode } = await view()
+    assert.match(deliveryCode, /^\d{4}$/)
+    assert.equal((await view('/tracking')).deliveryCode, deliveryCode)
+    const wrong = deliveryCode === '0000' ? '1111' : '0000'
+
+    const deliver = (code) => post(rider, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY', ...(code ? { code } : {}) })
+    assert.equal((await deliver()).status, 400)
+    assert.equal((await deliver(wrong)).status, 400)
+    const done = (await (await deliver(deliveryCode)).json()).data
+    assert.equal(done.currentStatus, 'DELIVERED')
+    assert.equal((await view()).deliveryCode, null)
+  })
+
+  test('five wrong codes lock it until staff hand it over', async () => {
+    const customer = await signup('cust@example.com')
+    const order = await book(customer)
+    const staff = await signup('staff@example.com', 'STAFF')
+    await signup('ravi@example.com', 'RIDER', 'Ravi')
+    const riderUser = await User.findOne({ email: 'ravi@example.com' })
+    const login = await fetch(`${baseUrl}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' }, body: JSON.stringify({ email: 'ravi@example.com', password: 'Password123!' }) })
+    const rider = login.headers.getSetCookie().find((c) => c.startsWith('wise_session=')).split(';')[0]
+    await post(staff, `/staff/orders/${order.reference}/rider`, { riderId: String(riderUser._id) })
+    await post(rider, `/staff/orders/${order.reference}/status`, { from: 'BOOKED', quantity: 3 })
+    await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'WASHING' } })
+    await post(staff, `/staff/orders/${order.reference}/status`, { from: 'WASHING' })
+    const code = (await (await get(customer, `/orders/${order.id}`)).json()).data.deliveryCode
+    const wrong = code === '0000' ? '1111' : '0000'
+    for (let i = 0; i < 5; i++) await post(rider, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY', code: wrong })
+    const locked = await post(rider, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY', code })
+    assert.equal((await locked.json()).error.code, 'CODE_LOCKED')
+    const handed = (await (await post(staff, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY' })).json()).data
+    assert.equal(handed.currentStatus, 'DELIVERED')
+  })
 })

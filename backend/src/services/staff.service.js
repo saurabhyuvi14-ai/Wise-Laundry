@@ -1,4 +1,6 @@
+import { randomInt } from 'node:crypto'
 import { Order } from '../models/Order.js'
+import { encrypt, decrypt } from '../utils/crypto.js'
 import { Service } from '../models/Service.js'
 import { User } from '../models/User.js'
 import { ApiError } from '../utils/errors.js'
@@ -152,6 +154,8 @@ export async function getWorkList(user, { day } = {}) {
 
 // ---------- Status buttons ----------
 
+const MAX_CODE_TRIES = 5
+
 // Steps a rider can mark; the washing steps are for laundry staff.
 const RIDER_STEPS = ['PICKED_UP', 'RECEIVED', 'OUT_FOR_DELIVERY', 'DELIVERED']
 
@@ -166,7 +170,7 @@ function nextStage(order, service) {
  * Move an order one step forward (Picked up → At laundry → Washing → Out for delivery → Delivered).
  * `from` is the status the staff member saw, so a double tap or two staff tapping at once can't skip a step.
  */
-export async function advanceStatus(staffUser, idOrRef, { from, quantity }) {
+export async function advanceStatus(staffUser, idOrRef, { from, quantity, code }) {
   const order = await loadOrder(idOrRef)
   if (staffUser.role === 'RIDER' && String(order.riderId) !== String(staffUser._id)) {
     throw ApiError.forbidden('This job is not assigned to you.')
@@ -186,6 +190,18 @@ export async function advanceStatus(staffUser, idOrRef, { from, quantity }) {
     throw new ApiError(409, 'NOT_BILLED', 'Weigh and bill this order before sending it out.')
   }
 
+  // Delivery code: riders must enter the customer's code; staff may hand over without it (noted in history).
+  const checkCode = next === 'DELIVERED' && order.deliveryCodeEncrypted && (code || staffUser.role === 'RIDER')
+  if (checkCode) {
+    if (order.deliveryCodeTries >= MAX_CODE_TRIES) {
+      throw new ApiError(409, 'CODE_LOCKED', 'Too many wrong codes. Ask the laundry staff to mark this delivered.')
+    }
+    if (code !== decrypt(order.deliveryCodeEncrypted)) {
+      await Order.updateOne({ _id: order._id }, { $inc: { deliveryCodeTries: 1 } })
+      throw ApiError.badRequest('That code is not right. Ask the customer to check their order page.', { code: 'Wrong code.' })
+    }
+  }
+
   // Weighing at the doorstep: riders must enter the weight/count when picking up; staff may.
   const weighNow = next === 'PICKED_UP' && (quantity != null || staffUser.role === 'RIDER')
   const now = new Date()
@@ -197,6 +213,14 @@ export async function advanceStatus(staffUser, idOrRef, { from, quantity }) {
     set['items.0.quantity'] = q
     set.bill = { ...computeBill(item, q, { express: orderExpress(order) }), finalizedAt: now, finalizedBy: staffUser.email, revision: 1 }
     note = `${item.pricingUnit === 'PIECE' ? `${q} items counted` : `Weighed at ${q} kg`} by ${staffUser.fullName}. Final bill ready.`
+  }
+  if (next === 'OUT_FOR_DELIVERY') {
+    set.deliveryCodeEncrypted = encrypt(String(randomInt(0, 10000)).padStart(4, '0'))
+    set.deliveryCodeTries = 0
+  }
+  if (next === 'DELIVERED') {
+    set.deliveryCodeEncrypted = null
+    if (!checkCode && order.deliveryCodeEncrypted) note = `Handed over without the delivery code by ${staffUser.fullName}.`
   }
   // Clock starts when clothes reach the laundry (if billing didn't already start it).
   if (next === 'RECEIVED' && !order.estimatedDeliveryAt) {

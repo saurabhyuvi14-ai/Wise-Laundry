@@ -14,6 +14,7 @@
 - **Assign riders**: staff pick a rider on each order card. Orders have `riderId`. `GET /api/v1/staff/riders`, `POST /api/v1/staff/orders/:id/rider`.
 - **Weighing at the doorstep (step 4)**: tapping "Picked up" opens a weight (kg) / item-count box. Riders must fill it; staff can leave it empty to weigh later. The bill is made on the spot and shown to the customer; staff can still correct it in Weigh & bill. `POST /staff/orders/:id/status { from, quantity }`.
 - **Rider details for the customer (step 5)**: while the assigned rider is coming (pickup booked, or out for delivery) the order and tracking pages show their name and a Call button. Hidden at every other step; the raw `riderId` is never sent to customers. Orders/tracking include `rider { fullName, phone }` or `null`.
+- **Delivery code (step 6)**: going "Out for delivery" creates a 4-digit code (stored encrypted). The customer sees it on the order and tracking pages; the rider must enter it to mark Delivered. 5 wrong tries lock it; staff can then hand over without a code, which is written in the order history. The code disappears once delivered. Orders/tracking include `deliveryCode` (only while out for delivery); `POST /staff/orders/:id/status { from, code }`.
 - First admin: `npm run make-staff -- you@email.com ADMIN` (once).
 
 ---

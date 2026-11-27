@@ -1,5 +1,5 @@
 import { Service } from '../models/Service.js'
-import { findOrderByIdOrRef, riderFor } from './booking.service.js'
+import { findOrderByIdOrRef, riderFor, deliveryCodeFor } from './booking.service.js'
 import { enforceOwnership } from '../middleware/auth.js'
 import { ApiError } from '../utils/errors.js'
 import { config } from '../config/env.js'
@@ -23,6 +23,7 @@ export async function getTracking(userId, idOrRef) {
     updatedAt: json.updatedAt,
     history: json.statusHistory,
     rider: await riderFor(order),
+    deliveryCode: deliveryCodeFor(order),
   }
 }
 

@@ -19,7 +19,7 @@ import { BookAgainButton } from '../features/orders/components/BookAgainButton'
 import { OrderFeedback } from '../features/orders/components/OrderFeedback'
 import { ExpressBadge } from '../features/orders/components/DeliverySpeed'
 import { ExpressSwitch } from '../features/orders/components/ExpressSwitch'
-import { RiderCard } from '../features/orders/components/RiderCard'
+import { RiderCard, DeliveryCode } from '../features/orders/components/RiderCard'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
@@ -31,8 +31,8 @@ export default function OrderDetailsPage() {
 
   // After a reschedule or cancel: show the updated order, or reload it if the change was refused.
   function onChanged(updated, message, tone = 'success') {
-    // Change responses don't include the rider, so keep the one we already have.
-    if (updated) setData({ rider: order?.rider, ...updated })
+    // Change responses don't include the rider or code, so keep what we already have.
+    if (updated) setData({ rider: order?.rider, deliveryCode: order?.deliveryCode, ...updated })
     else reload({ silent: true })
     if (message) toast(message, tone)
   }
@@ -64,6 +64,7 @@ export default function OrderDetailsPage() {
       <div className="grid animate-fade-up gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
           <RiderCard rider={order.rider} status={order.currentStatus} />
+          <DeliveryCode code={order.deliveryCode} />
           <OrderFeedback order={order} onSaved={onChanged} />
           <Card className="flex items-center gap-4 border-brand-200 bg-brand-50/40 p-5">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-700 text-white">
