@@ -5,6 +5,16 @@
 
 ---
 
+## 27 Nov 2026 — Tracking: skipped-step fix and order slider
+
+**Branch:** `feature/customer-quick-wins`
+
+- **Fix:** the tracker showed a step as not done when the order jumped past it (for example straight from Scheduled to At laundry). Every step before the current one now shows as done; steps without a saved time just show no date.
+- **Order slider:** the "Select order" dropdown is replaced by a swipeable row of order cards (active orders first, each with its status and a small progress bar). Tap a card to switch; on desktop there are also left/right arrows. Hidden when the customer has only one order.
+- Files: `TrackingTimeline.jsx`, new `features/tracking/components/OrderSwitcher.jsx`, `LiveTrackingPage.jsx`
+
+---
+
 ## 27 Nov 2026 — Book again, rider instructions, Help & support
 
 **Branch:** `feature/customer-quick-wins`

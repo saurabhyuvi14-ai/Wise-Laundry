@@ -1,4 +1,4 @@
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { RotateCw, Headset, WifiOff, History, MapPin } from 'lucide-react'
 import { useTracking, useOrders } from '../features/orders/hooks/useOrders'
 import { TrackingTimeline } from '../features/tracking/components/TrackingTimeline'
@@ -6,12 +6,12 @@ import { DeliveryEstimate } from '../features/tracking/components/DeliveryEstima
 import { useServices } from '../features/services/components/ServiceList'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Card, CardHeader, CardBody } from '../components/ui/Card'
-import { Select } from '../components/ui/Select'
+import { OrderSwitcher } from '../features/tracking/components/OrderSwitcher'
 import { PageSkeleton } from '../components/ui/Spinner'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
 import { EmptyState } from '../components/feedback/EmptyState'
 import { Button } from '../components/ui/Button'
-import { STATUS, isActive, stageLabel } from '../features/orders/components/OrderStatusBadge'
+import { STATUS, stageLabel } from '../features/orders/components/OrderStatusBadge'
 import { formatDateTime, formatRelative } from '../utils/formatDate'
 import { cn } from '../utils/cn'
 
@@ -42,7 +42,6 @@ export function TrackingLatest() {
 
 export default function LiveTrackingPage() {
   const { orderId } = useParams()
-  const navigate = useNavigate()
   const tracking = useTracking(orderId)
   const services = useServices()
   const orders = useOrders({ status: 'all', pageSize: 50 })
@@ -61,19 +60,9 @@ export default function LiveTrackingPage() {
       <PageHeader title="Live Tracking" description="Track your laundry in real time." />
 
       <div className="animate-fade-up space-y-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <Select
-            label="Select order"
-            className="w-full sm:w-72"
-            value={orderId}
-            onChange={(e) => navigate(`/customer/orders/${e.target.value}/tracking`)}
-          >
-            {(orders.data ?? [{ id: orderId, reference: t.reference, items: [{ serviceName: '' }], currentStatus: t.currentStatus }]).map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.reference} {o.items[0].serviceName && `· ${o.items[0].serviceName}`} {isActive(o.currentStatus) ? '' : '(done)'}
-              </option>
-            ))}
-          </Select>
+        {orders.data?.length > 1 && <OrderSwitcher orders={orders.data} currentId={t.orderId ?? orderId} services={services.data} />}
+
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="flex items-center gap-3 text-xs text-navy-500">
             {tracking.error ? (
               <span className="inline-flex items-center gap-1.5 font-medium text-amber-700"><WifiOff className="size-3.5" /> Couldn't refresh — showing last update</span>
