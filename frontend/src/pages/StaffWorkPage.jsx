@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { formatCurrency } from '../utils/formatCurrency'
 import { ClipboardList, Phone, MapPin, MessageSquareText, RefreshCw, ShieldAlert, PackageCheck, Check, Truck, WashingMachine, AlertTriangle, Scale } from 'lucide-react'
 import { api } from '../services/api-client'
 import { useAuth } from '../features/auth/hooks/useAuth'
@@ -47,6 +48,9 @@ function mapsLink(address) {
 
 function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRider }) {
   const unit = c.pricingUnit === 'KG' ? 'kg' : 'items'
+  // Picking up opens a small box to enter the weight/count at the door.
+  const [weighing, setWeighing] = useState(false)
+  const [quantity, setQuantity] = useState('')
   return (
     <li className="animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
       <Card className={cn('p-4 transition hover:-translate-y-0.5 hover:shadow-md', c.express && 'border-amber-300', c.late && 'border-red-300')}>
@@ -93,12 +97,38 @@ function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRide
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        {weighing && (
+          <form
+            onSubmit={(e) => { e.preventDefault(); onAdvance(c, quantity === '' ? undefined : quantity) }}
+            className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-canvas p-3 animate-fade-up"
+          >
+            <label className="min-w-0 flex-1 text-sm font-medium">
+              {c.pricingUnit === 'KG' ? 'Weight (kg)' : 'Number of items'}
+              <input
+                type="number"
+                inputMode="decimal"
+                step={c.pricingUnit === 'KG' ? '0.1' : '1'}
+                min={c.pricingUnit === 'KG' ? '0.1' : '1'}
+                required={isRider}
+                autoFocus
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder={c.pricingUnit === 'KG' ? 'e.g. 4.5' : 'e.g. 12'}
+                className="mt-1 h-10 w-full rounded-lg border border-line bg-white px-3 text-base"
+              />
+            </label>
+            <Button type="submit" size="sm" loading={moving}>Save & pick up</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setWeighing(false)}>Cancel</Button>
+            {!isRider && <p className="w-full text-xs text-navy-500">Leave empty to weigh later at the laundry.</p>}
+          </form>
+        )}
+
+        {!weighing && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
           {c.nextStatus && (!isRider || RIDER_STEPS.includes(c.nextStatus)) && (
             c.nextStatus === 'OUT_FOR_DELIVERY' && !c.billed ? (
               <span className="text-xs font-semibold text-amber-700">Weigh & bill before sending out</span>
             ) : (
-              <Button size="sm" loading={moving} onClick={() => onAdvance(c)}>
+              <Button size="sm" loading={moving} onClick={() => (c.nextStatus === 'PICKED_UP' ? setWeighing(true) : onAdvance(c))}>
                 <Check className="size-4" aria-hidden /> {ACTION[c.nextStatus]}
               </Button>
             )
@@ -119,7 +149,7 @@ function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRide
               <Scale className="size-4" aria-hidden /> {c.billed ? 'Check bill' : 'Weigh & bill'}
             </Button>
           )}
-        </div>
+        </div>}
       </Card>
     </li>
   )
@@ -138,11 +168,15 @@ export default function StaffWorkPage() {
   const isStaff = isRider || ['STAFF', 'ADMIN'].includes(user?.role)
   const [riders, setRiders] = useState(null)
 
+  // The day currently on screen, so a slow answer for a previous day is ignored.
+  const dayRef = useRef(day)
+  dayRef.current = day
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.staffWorkList(day)
-      setData(res.data)
+      // Ignore a slow answer for a day the user has already switched away from.
+      if (dayRef.current === day) setData(res.data)
       setError(null)
     } catch (err) {
       setError(err)
@@ -159,11 +193,12 @@ export default function StaffWorkPage() {
     return () => clearInterval(t)
   }, [load, isStaff, isRider])
 
-  async function advance(c) {
+  async function advance(c, quantity) {
     setMoving(c.id)
     try {
-      await api.staffAdvanceStatus(c.reference, c.status)
-      toast(`${c.reference}: ${ACTION[c.nextStatus]}`)
+      const res = await api.staffAdvanceStatus(c.reference, c.status, quantity)
+      const total = c.nextStatus === 'PICKED_UP' && res.data.bill ? ` · bill ${formatCurrency(res.data.bill.totalPaise)}` : ''
+      toast(`${c.reference}: ${ACTION[c.nextStatus]}${total}`)
     } catch (err) {
       toast(err.message, 'error')
     } finally {

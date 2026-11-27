@@ -166,7 +166,7 @@ function nextStage(order, service) {
  * Move an order one step forward (Picked up → At laundry → Washing → Out for delivery → Delivered).
  * `from` is the status the staff member saw, so a double tap or two staff tapping at once can't skip a step.
  */
-export async function advanceStatus(staffUser, idOrRef, { from }) {
+export async function advanceStatus(staffUser, idOrRef, { from, quantity }) {
   const order = await loadOrder(idOrRef)
   if (staffUser.role === 'RIDER' && String(order.riderId) !== String(staffUser._id)) {
     throw ApiError.forbidden('This job is not assigned to you.')
@@ -186,15 +186,25 @@ export async function advanceStatus(staffUser, idOrRef, { from }) {
     throw new ApiError(409, 'NOT_BILLED', 'Weigh and bill this order before sending it out.')
   }
 
+  // Weighing at the doorstep: riders must enter the weight/count when picking up; staff may.
+  const weighNow = next === 'PICKED_UP' && (quantity != null || staffUser.role === 'RIDER')
   const now = new Date()
   const set = { currentStatus: next }
+  let note = `Updated by ${staffUser.fullName}.`
+  if (weighNow) {
+    const item = order.items[0]
+    const q = validateQuantity(item.pricingUnit, quantity)
+    set['items.0.quantity'] = q
+    set.bill = { ...computeBill(item, q, { express: orderExpress(order) }), finalizedAt: now, finalizedBy: staffUser.email, revision: 1 }
+    note = `${item.pricingUnit === 'PIECE' ? `${q} items counted` : `Weighed at ${q} kg`} by ${staffUser.fullName}. Final bill ready.`
+  }
   // Clock starts when clothes reach the laundry (if billing didn't already start it).
   if (next === 'RECEIVED' && !order.estimatedDeliveryAt) {
     set.estimatedDeliveryAt = new Date(now.getTime() + orderTurnaroundHours(order, service) * 3600000)
   }
   const updated = await Order.findOneAndUpdate(
     { _id: order._id, currentStatus: from },
-    { $set: set, $push: { statusHistory: { status: next, changedAt: now, note: `Updated by ${staffUser.fullName}.` } } },
+    { $set: set, $push: { statusHistory: { status: next, changedAt: now, note } } },
     { new: true },
   )
   if (!updated) throw new ApiError(409, 'ORDER_CHANGED', 'Someone already updated this order. Refresh to see the latest.')

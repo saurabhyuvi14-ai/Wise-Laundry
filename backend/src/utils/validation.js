@@ -203,6 +203,7 @@ export const expressSwitchSchema = z.object({
 
 export const advanceStatusSchema = z.object({
   from: z.string({ required_error: 'Missing current status.' }).min(1),
+  quantity: z.coerce.number({ invalid_type_error: 'Enter a number.' }).optional(),
 })
 
 export const assignRiderSchema = z.object({

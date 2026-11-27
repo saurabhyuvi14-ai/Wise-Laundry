@@ -72,7 +72,12 @@ describe('Team and riders', () => {
     assert.equal(work.groups.toPickup[0].rider.fullName, 'Ravi')
 
     assert.equal((await post(rider, `/staff/orders/${other.reference}/status`, { from: 'BOOKED' })).status, 403)
-    assert.equal((await post(rider, `/staff/orders/${mine.reference}/status`, { from: 'BOOKED' })).status, 200)
+    // Riders must weigh at the doorstep when picking up.
+    assert.equal((await post(rider, `/staff/orders/${mine.reference}/status`, { from: 'BOOKED' })).status, 400)
+    const picked = (await (await post(rider, `/staff/orders/${mine.reference}/status`, { from: 'BOOKED', quantity: 4 })).json()).data
+    assert.equal(picked.currentStatus, 'PICKED_UP')
+    assert.equal(picked.bill.totalPaise, 24000)
+    assert.equal(picked.statusHistory.at(-1).note, 'Weighed at 4 kg by Ravi. Final bill ready.')
     assert.equal((await post(rider, `/staff/orders/${mine.reference}/status`, { from: 'PICKED_UP' })).status, 200)
     // Washing is a laundry-staff step.
     assert.equal((await post(rider, `/staff/orders/${mine.reference}/status`, { from: 'RECEIVED' })).status, 403)
@@ -90,5 +95,22 @@ describe('Team and riders', () => {
     await post(admin, `/staff/orders/${order.reference}/rider`, { riderId: String(rider._id) })
     await post(admin, '/staff/team', { email: 'ravi@example.com', role: 'CUSTOMER' })
     assert.equal((await Order.findOne({ reference: order.reference })).riderId, null)
+  })
+
+  test('staff can correct the doorstep weight later', async () => {
+    const customer = await signup('cust@example.com')
+    const order = await book(customer)
+    const staff = await signup('staff@example.com', 'STAFF')
+    await signup('ravi@example.com', 'RIDER', 'Ravi')
+    const rider = await User.findOne({ email: 'ravi@example.com' })
+    await post(staff, `/staff/orders/${order.reference}/rider`, { riderId: String(rider._id) })
+    const riderCookie = await (async () => {
+      const res = await fetch(`${baseUrl}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' }, body: JSON.stringify({ email: 'ravi@example.com', password: 'Password123!' }) })
+      return res.headers.getSetCookie().find((c) => c.startsWith('wise_session=')).split(';')[0]
+    })()
+    await post(riderCookie, `/staff/orders/${order.reference}/status`, { from: 'BOOKED', quantity: 4 })
+    const fixed = (await (await post(staff, `/staff/orders/${order.reference}/bill`, { quantity: 5 })).json()).data
+    assert.equal(fixed.bill.totalPaise, 30000)
+    assert.equal(fixed.bill.revision, 2)
   })
 })
