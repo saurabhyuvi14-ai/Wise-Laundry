@@ -1,4 +1,4 @@
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { RotateCw, Headset, WifiOff, History, MapPin } from 'lucide-react'
 import { useTracking, useOrders } from '../features/orders/hooks/useOrders'
 import { TrackingTimeline } from '../features/tracking/components/TrackingTimeline'
@@ -109,7 +109,7 @@ export default function LiveTrackingPage() {
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-canvas text-navy-700"><Headset className="size-5" /></span>
             <div>
               <p className="text-sm text-navy-500">Need help with this order?</p>
-              <a href="mailto:support@wiselaundry.example" className="font-bold text-brand-700 hover:underline">Contact Support</a>
+              <Link to={`/customer/help?order=${encodeURIComponent(t.reference)}`} className="font-bold text-brand-700 hover:underline">Get help</Link>
             </div>
           </div>
         </div>

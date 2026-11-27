@@ -1,4 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import { LifeBuoy } from 'lucide-react'
 import { customerNav, activeNavItem, BOOK_PATH, BookIcon } from './CustomerSidebar'
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
@@ -9,9 +10,14 @@ export function MobileTopBar() {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:hidden">
       <Logo to="/customer" className="[&_span]:text-[15px] [&_svg]:size-8" />
-      <Link to="/customer/profile" aria-label="Profile" className="grid size-9 place-items-center rounded-full bg-brand-700 text-sm font-bold text-white">
-        {user?.fullName?.[0] ?? '?'}
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link to="/customer/help" aria-label="Help and support" className="grid size-9 place-items-center rounded-full text-navy-700 hover:bg-canvas">
+          <LifeBuoy className="size-5" aria-hidden />
+        </Link>
+        <Link to="/customer/profile" aria-label="Profile" className="grid size-9 place-items-center rounded-full bg-brand-700 text-sm font-bold text-white">
+          {user?.fullName?.[0] ?? '?'}
+        </Link>
+      </div>
     </header>
   )
 }

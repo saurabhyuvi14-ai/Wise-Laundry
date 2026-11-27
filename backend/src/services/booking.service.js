@@ -85,6 +85,7 @@ export async function createOrder(userId, data, idempotencyKey) {
           unitPricePaise: service.unitPricePaise,
         },
       ],
+      addressId: data.addressId,
       pickupScheduledAt: pickupDate,
       pickupSlotHours: data.pickupSlotHours || 2,
       idempotencyKey: idempotencyKey || undefined,

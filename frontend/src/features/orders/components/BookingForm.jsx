@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
+import { InstructionChips } from './InstructionChips'
 import { cn } from '../../../utils/cn'
 import { ServiceSelector } from './ServiceSelector'
 import { AddressSelector } from './AddressSelector'
@@ -34,6 +36,14 @@ export function BookingStep({ number, title, optional, done, children, action })
 export function BookingForm() {
   const { draft, update, services, addresses, reloadAddresses, service, address, scheduled, stepsDone, submitting, errors, submit } = useBooking()
 
+  // When an address with saved instructions is picked and the box is empty, fill them in.
+  const filledFor = useRef(null)
+  useEffect(() => {
+    if (!address || filledFor.current === address.id) return
+    filledFor.current = address.id
+    if (!draft.instructions.trim() && address.instructions) update({ instructions: address.instructions.slice(0, 240) })
+  }, [address, draft.instructions, update])
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="space-y-5">
@@ -62,10 +72,11 @@ export function BookingForm() {
           <PickupSchedule date={draft.date} slotHour={draft.slotHour} onChange={update} error={errors.pickupScheduledAt} />
         </BookingStep>
 
-        <BookingStep number={4} title="Pickup instructions" optional done={Boolean(draft.instructions.trim())}>
+        <BookingStep number={4} title="Pickup & delivery instructions" optional done={Boolean(draft.instructions.trim())}>
+          <InstructionChips value={draft.instructions} onChange={(instructions) => update({ instructions })} />
           <Textarea
-            aria-label="Pickup instructions"
-            placeholder="Gate number, landmark or instructions for our team"
+            aria-label="Pickup and delivery instructions"
+            placeholder="Gate number, floor, or anything else our rider should know"
             maxLength={240}
             value={draft.instructions}
             onChange={(e) => update({ instructions: e.target.value })}

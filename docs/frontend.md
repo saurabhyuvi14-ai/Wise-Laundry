@@ -5,6 +5,27 @@
 
 ---
 
+## 27 Nov 2026 — Book again, rider instructions, Help & support
+
+**Branch:** `feature/customer-quick-wins`
+
+### What customers get
+- **Book again** — a button on finished orders (delivered or cancelled) and a "Book your usual" card on the dashboard. It opens the booking page with the same service, address and instructions already filled in; the customer only picks a time.
+- **Pickup & delivery instructions** — one-tap chips ("Call before coming", "Ring the bell", "Leave with security", "Message on WhatsApp, don't call", "Pets at home") in the booking form and on saved addresses. A saved address's instructions fill the box automatically when it's empty.
+- **Help & support** — new page at `/customer/help` with answers built from the real rules (live prices, turnaround, 2-hour change cutoff, Bengaluru only). Linked from the sidebar, the phone top bar, the order page and the tracking page (these used a fake support email before). Opening it from an order adds the order number to the WhatsApp/email message.
+
+### Settings
+- `VITE_SUPPORT_WHATSAPP` (digits with country code, e.g. `919876543210`), `VITE_SUPPORT_PHONE`, `VITE_SUPPORT_EMAIL` in the frontend Vercel project. Each button only shows when its value is set; with none set the page says contact details are coming soon.
+
+### Backend
+- Orders now save `addressId` (the saved address used), so "Book again" picks the same one. Older orders fall back to matching the address text. Redeploy the backend.
+
+### Files
+- New: `pages/HelpPage.jsx`, `features/orders/components/BookAgainButton.jsx`, `features/orders/components/InstructionChips.jsx`
+- Changed: `useBooking.js` (`useBookAgain`), `BookingForm.jsx`, `AddressForm.jsx`, `BookLaundryPage.jsx`, `DashboardPage.jsx`, `OrderDetailsPage.jsx`, `LiveTrackingPage.jsx`, `CustomerSidebar.jsx`, `MobileNavigation.jsx`, `Button.jsx` (`href`), `app/router.jsx`, `.env.example`
+
+---
+
 ## 25 Nov 2026 — Final bill after pickup
 
 **Branch:** `feature/final-bill`

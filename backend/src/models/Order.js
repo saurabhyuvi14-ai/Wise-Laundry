@@ -81,6 +81,11 @@ const orderSchema = new mongoose.Schema(
       type: [orderItemSchema],
       required: true,
     },
+    // The saved address used to book (the snapshot below keeps the address as it was).
+    addressId: {
+      type: String,
+      default: null,
+    },
     addressSnapshot: {
       label: String,
       recipientName: String,

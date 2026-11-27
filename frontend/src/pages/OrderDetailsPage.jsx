@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { MapPin, CalendarDays, Receipt, MessageSquareText, ArrowRight, Headset } from 'lucide-react'
 import { useOrder } from '../features/orders/hooks/useOrders'
 import { OrderStatusBadge, STATUS, stageLabel } from '../features/orders/components/OrderStatusBadge'
@@ -15,6 +15,7 @@ import { ADDRESS_LABELS, formatAddress } from '../features/addresses/components/
 import { OrderChanges } from '../features/orders/components/OrderChanges'
 import { OrderBill } from '../features/orders/components/OrderBill'
 import { useToast } from '../components/feedback/Toast'
+import { BookAgainButton } from '../features/orders/components/BookAgainButton'
 
 const unitWord = { KG: 'kg', PIECE: 'items' }
 
@@ -46,7 +47,13 @@ export default function OrderDetailsPage() {
         title={`Order ${order.reference}`}
         description={`Placed on ${formatDate(order.createdAt)}`}
         badge={<OrderStatusBadge status={order.currentStatus} label={stageLabel(order.currentStatus, service)} />}
-        action={!cancelled && <Button to={`/customer/orders/${order.id}/tracking`}>Track live <ArrowRight className="size-4" /></Button>}
+        action={
+          ['DELIVERED', 'CANCELLED'].includes(order.currentStatus) ? (
+            <BookAgainButton order={order} variant="primary" />
+          ) : (
+            <Button to={`/customer/orders/${order.id}/tracking`}>Track live <ArrowRight className="size-4" /></Button>
+          )
+        }
       />
 
       <div className="grid animate-fade-up gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -92,7 +99,7 @@ export default function OrderDetailsPage() {
 
           {order.instructions && (
             <Card>
-              <CardHeader icon={MessageSquareText} title="Pickup instructions" />
+              <CardHeader icon={MessageSquareText} title="Pickup & delivery instructions" />
               <CardBody><p className="text-sm text-navy-700">“{order.instructions}”</p></CardBody>
             </Card>
           )}
@@ -121,7 +128,7 @@ export default function OrderDetailsPage() {
             <Headset className="size-5 text-brand-700" aria-hidden />
             <div className="text-sm">
               <p className="font-semibold">Need help with this order?</p>
-              <a href="mailto:support@wiselaundry.example" className="font-semibold text-brand-700 hover:underline">Contact support</a>
+              <Link to={`/customer/help?order=${encodeURIComponent(order.reference)}`} className="font-semibold text-brand-700 hover:underline">Get help</Link>
             </div>
           </Card>
         </div>
