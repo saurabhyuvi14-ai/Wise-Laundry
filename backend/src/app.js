@@ -18,6 +18,7 @@ import slotsRoutes from './routes/slots.routes.js'
 import ordersRoutes from './routes/orders.routes.js'
 import staffRoutes from './routes/staff.routes.js'
 import notificationsRoutes from './routes/notifications.routes.js'
+import pushRoutes from './routes/push.routes.js'
 import healthRoutes from './routes/health.routes.js'
 
 const app = express()
@@ -75,6 +76,7 @@ app.use('/api/v1/slots', slotsRoutes)
 app.use('/api/v1/orders', ordersRoutes)
 app.use('/api/v1/staff', staffRoutes)
 app.use('/api/v1/notifications', notificationsRoutes)
+app.use('/api/v1/push', pushRoutes)
 app.use('/api/v1/health', healthRoutes)
 
 // Catch-all 404 for undefined API endpoints

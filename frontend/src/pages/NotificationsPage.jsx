@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { BellOff, CalendarClock, ChevronRight } from 'lucide-react'
 import { PageHeader } from '../components/ui/PageHeader'
+import { PushToggle } from '../features/notifications/components/PushToggle'
 import { Card } from '../components/ui/Card'
 import { Skeleton } from '../components/ui/Spinner'
 import { EmptyState } from '../components/feedback/EmptyState'
@@ -43,6 +44,7 @@ export default function NotificationsPage() {
   return (
     <>
       <PageHeader title="Updates" description="Every step of your orders, newest first." />
+      <PushToggle />
       {loading && !items.length ? (
         <div className="space-y-3">{[0, 1, 2, 3].map((k) => <Skeleton key={k} className="h-20 rounded-2xl" />)}</div>
       ) : !items.length ? (

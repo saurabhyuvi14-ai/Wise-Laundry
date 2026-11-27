@@ -35,6 +35,12 @@ const envSchema = z.object({
   UPI_ID: z.string().trim().default(''),
   UPI_PAYEE_NAME: z.string().trim().default('Wise Laundry'),
   PAYMENT_CASH_ALLOWED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  // Riders must mark an order paid before they can hand it over.
+  REQUIRE_PAYMENT_ON_DELIVERY: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  // Web push notifications. Generate with: npx web-push generate-vapid-keys. Empty = push off.
+  VAPID_PUBLIC_KEY: z.string().trim().default(''),
+  VAPID_PRIVATE_KEY: z.string().trim().default(''),
+  VAPID_SUBJECT: z.string().trim().default('mailto:support@wiselaundry.app'),
   ORDER_CHANGE_CUTOFF_MINUTES: z.coerce.number().int().min(0).default(120),
   // How many times one order can be rescheduled.
   ORDER_MAX_RESCHEDULES: z.coerce.number().int().min(0).default(2),

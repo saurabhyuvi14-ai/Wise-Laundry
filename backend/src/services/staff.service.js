@@ -1,6 +1,8 @@
 import { randomInt } from 'node:crypto'
 import { Order } from '../models/Order.js'
 import { encrypt, decrypt } from '../utils/crypto.js'
+import { config } from '../config/env.js'
+import { notifyOrderStatus } from './push.service.js'
 import { Service } from '../models/Service.js'
 import { User } from '../models/User.js'
 import { ApiError } from '../utils/errors.js'
@@ -191,6 +193,10 @@ export async function advanceStatus(staffUser, idOrRef, { from, quantity, code }
   if (next === 'OUT_FOR_DELIVERY' && !order.bill?.finalizedAt) {
     throw new ApiError(409, 'NOT_BILLED', 'Weigh and bill this order before sending it out.')
   }
+  // Riders collect payment before handing over (staff can still deliver without it).
+  if (next === 'DELIVERED' && staffUser.role === 'RIDER' && config?.REQUIRE_PAYMENT_ON_DELIVERY && order.bill?.finalizedAt && order.payment?.status !== 'PAID') {
+    throw new ApiError(409, 'NOT_PAID', 'Collect payment first. Mark it Paid, then hand over.')
+  }
 
   // Delivery code: riders must enter the customer's code; staff may hand over without it (noted in history).
   const checkCode = next === 'DELIVERED' && order.deliveryCodeEncrypted && (code || staffUser.role === 'RIDER')
@@ -234,6 +240,7 @@ export async function advanceStatus(staffUser, idOrRef, { from, quantity, code }
     { new: true },
   )
   if (!updated) throw new ApiError(409, 'ORDER_CHANGED', 'Someone already updated this order. Refresh to see the latest.')
+  notifyOrderStatus(updated) // push to the customer; fire-and-forget
   return updated.toJSON()
 }
 

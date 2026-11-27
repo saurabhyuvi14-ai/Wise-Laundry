@@ -146,4 +146,38 @@ describe('UPI payments', () => {
     const other = await signup('other@example.com')
     assert.equal((await post(other, `/orders/${order.id}/pay`, {})).status, 403)
   })
+
+  test('a rider cannot deliver until payment is marked paid', async () => {
+    const customer = await signup('asha@example.com')
+    const staff = await signup('staff@example.com', 'STAFF')
+    const order = await bookAndBill(customer, staff) // PICKED_UP + billed 240
+    await signup('ravi@example.com', 'RIDER', 'Ravi')
+    const riderUser = await User.findOne({ email: 'ravi@example.com' })
+    await post(staff, `/staff/orders/${order.reference}/rider`, { riderId: String(riderUser._id) })
+    const login = await fetch(`${baseUrl}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-test-bypass-csrf': '1' }, body: JSON.stringify({ email: 'ravi@example.com', password: 'Password123!' }) })
+    const rider = login.headers.getSetCookie().find((c) => c.startsWith('wise_session=')).split(';')[0]
+    // move it out for delivery (via staff)
+    await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'WASHING' } })
+    await post(staff, `/staff/orders/${order.reference}/status`, { from: 'WASHING' })
+    const code = (await (await get(customer, `/orders/${order.id}`)).json()).data.deliveryCode
+
+    // rider tries to deliver while unpaid -> blocked
+    const blocked = await post(rider, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY', code })
+    assert.equal(blocked.status, 409)
+    assert.equal((await blocked.json()).error.code, 'NOT_PAID')
+
+    // rider collects cash, then delivery works
+    await post(rider, `/staff/orders/${order.reference}/payment`, { status: 'PAID', method: 'CASH' })
+    const done = await post(rider, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY', code })
+    assert.equal((await done.json()).data.currentStatus, 'DELIVERED')
+  })
+
+  test('staff can deliver without payment (override)', async () => {
+    const customer = await signup('asha@example.com')
+    const staff = await signup('staff@example.com', 'STAFF')
+    const order = await bookAndBill(customer, staff)
+    await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'OUT_FOR_DELIVERY' } })
+    const done = await post(staff, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY' })
+    assert.equal((await done.json()).data.currentStatus, 'DELIVERED')
+  })
 })

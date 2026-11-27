@@ -135,6 +135,8 @@ function WorkCard({ c, group, index, onAdvance, moving, riders, onAssign, isRide
           {c.nextStatus && (!isRider || RIDER_STEPS.includes(c.nextStatus)) && (
             c.nextStatus === 'OUT_FOR_DELIVERY' && !c.billed ? (
               <span className="text-xs font-semibold text-amber-700">Weigh & bill before sending out</span>
+            ) : isRider && c.nextStatus === 'DELIVERED' && c.billed && c.payment?.status !== 'PAID' ? (
+              <span className="text-xs font-semibold text-amber-700">Collect payment before handing over</span>
             ) : (
               <Button size="sm" loading={moving} onClick={() => (['PICKED_UP', 'DELIVERED'].includes(c.nextStatus) ? setAsking(true) : onAdvance(c))}>
                 <Check className="size-4" aria-hidden /> {ACTION[c.nextStatus]}

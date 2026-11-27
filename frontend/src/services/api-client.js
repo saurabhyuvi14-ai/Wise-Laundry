@@ -100,6 +100,11 @@ export const laundryApi = {
   // updates feed (built from order status changes)
   listNotifications: () => apiClient('/notifications'),
   markNotificationsSeen: () => apiClient('/notifications/seen', { method: 'POST' }),
+
+  // web push
+  pushKey: () => apiClient('/push/key'),
+  pushSubscribe: (subscription) => apiClient('/push/subscribe', { method: 'POST', body: { subscription } }),
+  pushUnsubscribe: (endpoint) => apiClient('/push/unsubscribe', { method: 'POST', body: { endpoint } }),
 }
 
 export const api = laundryApi

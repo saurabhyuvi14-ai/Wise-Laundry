@@ -150,6 +150,8 @@ describe('Team and riders', () => {
     await post(staff, `/staff/orders/${order.reference}/status`, { from: 'WASHING' })
 
     const view = async (path = '') => (await (await get(customer, `/orders/${order.id}${path}`)).json()).data
+    // Rider must collect payment before handing over (payment gate), so mark it paid first.
+    await post(staff, `/staff/orders/${order.reference}/payment`, { status: 'PAID', method: 'CASH' })
     const { deliveryCode } = await view()
     assert.match(deliveryCode, /^\d{4}$/)
     assert.equal((await view('/tracking')).deliveryCode, deliveryCode)
@@ -175,6 +177,7 @@ describe('Team and riders', () => {
     await post(rider, `/staff/orders/${order.reference}/status`, { from: 'BOOKED', quantity: 3 })
     await Order.updateOne({ reference: order.reference }, { $set: { currentStatus: 'WASHING' } })
     await post(staff, `/staff/orders/${order.reference}/status`, { from: 'WASHING' })
+    await post(staff, `/staff/orders/${order.reference}/payment`, { status: 'PAID', method: 'CASH' })
     const code = (await (await get(customer, `/orders/${order.id}`)).json()).data.deliveryCode
     const wrong = code === '0000' ? '1111' : '0000'
     for (let i = 0; i < 5; i++) await post(rider, `/staff/orders/${order.reference}/status`, { from: 'OUT_FOR_DELIVERY', code: wrong })

@@ -5,6 +5,19 @@
 
 ---
 
+## 28 Nov 2026 — Web push notifications
+
+**Branch:** `feature/web-push`
+
+- Customers can turn on **browser/phone notifications** (works even when the site is closed): a "Get alerts" card on the Updates page → Turn on. We push at each staff step: picked up, washing, out for delivery, delivered.
+- **Backend**: `web-push` library; `PushSubscription` model (one row per device); `push.service.js`; routes `GET /push/key`, `POST /push/subscribe`, `POST /push/unsubscribe`. `advanceStatus` fires `notifyOrderStatus` (fire-and-forget) to the order's customer. Dead subscriptions are cleaned up on send.
+- **Frontend**: service worker `public/sw.js` (shows the notification, opens the order on tap), `features/notifications/push.js`, `PushToggle` on the Updates page, and app icons `public/icons/pwa-192.png` / `pwa-512.png`.
+- **Settings (backend)**: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (generate with `npx web-push generate-vapid-keys`), `VAPID_SUBJECT`. Empty = push off (toggle hidden).
+- **Frontend dependency**: `web-push` (backend) — run `npm install` in `backend/`. No new frontend dep.
+- Real delivery can only be tested on a real device; headless browsers can't receive pushes.
+
+---
+
 ## 28 Nov 2026 — Direct UPI payments (no gateway, no 2% fee)
 
 **Branch:** `feature/upi-payments`
@@ -15,6 +28,7 @@
 - Since there's no gateway, confirmation is done by a person (customer taps paid, rider/staff confirm). Nothing can be faked into "paid" without a confirm.
 - **Settings (backend)**: `UPI_ID` (your business UPI handle — leave empty to hide payment entirely), `UPI_PAYEE_NAME`, `PAYMENT_CASH_ALLOWED`.
 - **Frontend dependency**: `qrcode.react` (run `npm install` in `frontend/` once).
+- **Riders must collect payment before handing over**: a rider can't mark Delivered until the order is Paid (staff can still deliver without it). Setting: `REQUIRE_PAYMENT_ON_DELIVERY` (default true).
 - Endpoints: order JSON gains `payment` + `upiPayment`; `POST /orders/:id/pay`, `POST /staff/orders/:id/payment`. Tests: `tests/payments.test.js`. **Redeploy the backend and set `UPI_ID`.**
 
 ---
