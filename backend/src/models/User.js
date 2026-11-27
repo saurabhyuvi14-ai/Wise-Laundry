@@ -59,6 +59,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Last time the customer opened their updates; anything newer counts as unread.
+    notificationsSeenAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

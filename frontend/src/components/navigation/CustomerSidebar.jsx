@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Navbar'
 import { useAuth } from '../../features/auth/hooks/useAuth'
 import { cn } from '../../utils/cn'
+import { NotificationBell } from '../../features/notifications/components/NotificationBell'
 
 // Main menu (team decision): Dashboard · My Orders · [+ Book] · Tracking · Profile
 export const customerNav = [
@@ -59,6 +60,7 @@ export function CustomerSidebar() {
             </NavLink>
           )
         })}
+        <NotificationBell withLabel />
       </nav>
 
       <NavLink

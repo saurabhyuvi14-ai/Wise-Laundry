@@ -278,3 +278,20 @@ export async function rescheduleOrder(userId, idOrRef, { pickupScheduledAt, pick
   await releaseSlot(prev.dateStr, prev.slotHour).catch(() => {})
   return updated.toJSON()
 }
+
+/**
+ * Rate a delivered order (once). A problem report goes in the same record so staff see both together.
+ */
+export async function submitFeedback(userId, idOrRef, { rating, tags, comment, issue }) {
+  const order = await loadOwnOrder(userId, idOrRef)
+  if (order.currentStatus !== 'DELIVERED') {
+    throw new ApiError(409, 'ORDER_NOT_DELIVERED', 'You can rate this order once it has been delivered.')
+  }
+  const updated = await Order.findOneAndUpdate(
+    { _id: order._id, currentStatus: 'DELIVERED', 'feedback.createdAt': null },
+    { $set: { feedback: { rating, tags, comment, issue: issue || { type: null, note: '' }, createdAt: new Date() } } },
+    { new: true },
+  )
+  if (!updated) throw new ApiError(409, 'FEEDBACK_ALREADY_GIVEN', 'You have already rated this order. Thank you!')
+  return updated.toJSON()
+}

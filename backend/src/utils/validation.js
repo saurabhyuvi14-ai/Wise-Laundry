@@ -176,3 +176,22 @@ export function validate(schema, data) {
   return result.data
 }
 
+
+export const FEEDBACK_TAGS = ['CLEAN_FRESH', 'NEATLY_FOLDED', 'ON_TIME', 'POLITE_RIDER', 'GOOD_VALUE', 'STAINS_LEFT', 'ITEM_MISSING', 'DAMAGED', 'LATE', 'WRONG_ITEMS']
+export const ISSUE_TYPES = ['ITEM_MISSING', 'DAMAGED', 'STAINS_LEFT', 'WRONG_ITEMS', 'LATE_DELIVERY', 'BILLING', 'OTHER']
+
+export const feedbackSchema = z
+  .object({
+    rating: z.number({ invalid_type_error: 'Pick a star rating.', required_error: 'Pick a star rating.' }).int().min(1, 'Pick a star rating.').max(5),
+    tags: z.array(z.enum(FEEDBACK_TAGS)).max(FEEDBACK_TAGS.length).optional().default([]),
+    comment: z.string().trim().max(500).optional().default(''),
+    issue: z
+      .object({
+        type: z.enum(ISSUE_TYPES, { errorMap: () => ({ message: 'Choose what went wrong.' }) }),
+        note: z.string().trim().max(500).optional().default(''),
+      })
+      .nullable()
+      .optional()
+      .default(null),
+  })
+  .refine((d) => !d.issue || d.issue.type !== 'OTHER' || d.issue.note.length > 0, { message: 'Tell us what went wrong.', path: ['issue', 'note'] })

@@ -180,6 +180,17 @@ const orderSchema = new mongoose.Schema(
       cancelledAt: { type: Date, default: null },
       cancelledBy: { type: String, default: null },
     },
+    // Customer's rating after delivery (one per order), plus an optional problem report.
+    feedback: {
+      rating: { type: Number, min: 1, max: 5, default: null },
+      tags: { type: [String], default: undefined },
+      comment: { type: String, default: '' },
+      issue: {
+        type: { type: String, default: null },
+        note: { type: String, default: '' },
+      },
+      createdAt: { type: Date, default: null },
+    },
     idempotencyKey: {
       type: String,
       index: true,
@@ -236,6 +247,15 @@ const orderSchema = new mongoose.Schema(
           changedAt: h.changedAt?.toISOString?.() ?? h.changedAt,
           changedBy: h.changedBy,
         }))
+        ret.feedback = ret.feedback?.createdAt
+          ? {
+              rating: ret.feedback.rating,
+              tags: ret.feedback.tags || [],
+              comment: ret.feedback.comment || '',
+              issue: ret.feedback.issue?.type ? { type: ret.feedback.issue.type, note: ret.feedback.issue.note || '' } : null,
+              createdAt: ret.feedback.createdAt.toISOString(),
+            }
+          : null
         ret.cancellation = ret.cancellation?.cancelledAt
           ? {
               reason: ret.cancellation.reason,

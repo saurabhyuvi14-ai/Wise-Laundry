@@ -8,18 +8,17 @@ import { cn } from '../../../utils/cn'
  * The connector runs from this circle to the next one, so it always fits
  * however narrow the phone is.
  */
-export function TrackingStep({ status, label, state, changedAt, isLast }) {
+export function TrackingStep({ status, label, state, changedAt, isLast, index = 0 }) {
   const Icon = STATUS[status]?.icon
   return (
     <li className="relative flex min-w-0 flex-1 flex-col items-center text-center">
       {!isLast && (
         <span
           aria-hidden
-          className={cn(
-            'absolute top-4 left-[calc(50%+1.25rem)] h-0.5 w-[calc(100%-2.5rem)] rounded-full sm:top-5 sm:left-[calc(50%+1.625rem)] sm:w-[calc(100%-3.25rem)]',
-            state === 'done' ? 'bg-brand-500' : 'bg-line',
-          )}
-        />
+          className="absolute top-4 left-[calc(50%+1.25rem)] h-0.5 w-[calc(100%-2.5rem)] overflow-hidden rounded-full bg-line sm:top-5 sm:left-[calc(50%+1.625rem)] sm:w-[calc(100%-3.25rem)]"
+        >
+          {state === 'done' && <span className="block h-full origin-left animate-grow-x rounded-full bg-brand-500" style={{ animationDelay: `${index * 120}ms` }} />}
+        </span>
       )}
       <span
         className={cn(
@@ -29,7 +28,7 @@ export function TrackingStep({ status, label, state, changedAt, isLast }) {
           state === 'upcoming' && 'border border-line bg-canvas text-navy-400',
         )}
       >
-        {state === 'done' ? <Check className="size-4 sm:size-5" strokeWidth={3} /> : Icon && <Icon className="size-4 sm:size-5" />}
+        {state === 'done' ? <Check className="size-4 animate-pop sm:size-5" strokeWidth={3} style={{ animationDelay: `${index * 120}ms` }} /> : Icon && <Icon className="size-4 sm:size-5" />}
       </span>
       <p className={cn('mt-2 w-full text-[10px] leading-tight font-semibold tracking-tight [overflow-wrap:normal] min-[360px]:text-[11px] sm:text-sm sm:tracking-normal', state === 'upcoming' && 'text-navy-400')}>
         {STATUS[status]?.tiny ? (

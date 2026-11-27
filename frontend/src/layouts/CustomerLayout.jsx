@@ -10,6 +10,7 @@ import { AddressForm } from '../features/addresses/components/AddressForm'
 import { useGeolocation } from '../features/addresses/hooks/useGeolocation'
 import { useToast } from '../components/feedback/Toast'
 import { api } from '../services/api-client'
+import { NotificationsProvider } from '../context/NotificationsContext'
 
 function SignupLocationSetup({ user, onDone }) {
   const toast = useToast()
@@ -93,7 +94,7 @@ export function CustomerLayout() {
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
 
-  return (
+  const shell = (
     <div className="flex min-h-dvh bg-canvas print:bg-white">
       {user && <div className="contents print:hidden"><CustomerSidebar /></div>}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -106,4 +107,5 @@ export function CustomerLayout() {
       {user && justSignedUp && <SignupLocationSetup user={user} onDone={dismissSignupPrompt} />}
     </div>
   )
+  return user ? <NotificationsProvider key={user.id}>{shell}</NotificationsProvider> : shell
 }
