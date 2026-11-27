@@ -73,4 +73,40 @@ describe('Staff work list', () => {
     const staff = await signup('staff2@example.com', 'STAFF')
     assert.equal((await get(staff, '/staff/work?day=nope')).status, 400)
   })
+
+  test('staff move an order forward one step at a time', async () => {
+    const customer = await signup('flow@example.com')
+    const order = await book(customer, 30)
+    const staff = await signup('mover@example.com', 'STAFF')
+    const move = (from) => post(staff, `/staff/orders/${order.reference}/status`, { from })
+
+    let res = await move('BOOKED')
+    assert.equal((await res.json()).data.currentStatus, 'PICKED_UP')
+    // A second tap with the old status is refused instead of skipping a step.
+    res = await move('BOOKED')
+    assert.equal(res.status, 409)
+
+    res = await move('PICKED_UP')
+    const received = (await res.json()).data
+    assert.equal(received.currentStatus, 'RECEIVED')
+    assert.ok(received.estimatedDeliveryAt, 'delivery clock started')
+    assert.equal((await (await move('RECEIVED')).json()).data.currentStatus, 'WASHING')
+
+    // Can't go out for delivery before the bill is made.
+    res = await move('WASHING')
+    assert.equal(res.status, 409)
+    assert.equal((await res.json()).error.code, 'NOT_BILLED')
+    await post(staff, `/staff/orders/${order.reference}/bill`, { quantity: 3 })
+    assert.equal((await (await move('WASHING')).json()).data.currentStatus, 'OUT_FOR_DELIVERY')
+    const done = (await (await move('OUT_FOR_DELIVERY')).json()).data
+    assert.equal(done.currentStatus, 'DELIVERED')
+    assert.equal(done.statusHistory.at(-1).note, 'Updated by Work Tester.')
+    assert.equal((await move('DELIVERED')).status, 409)
+  })
+
+  test('customers cannot change status', async () => {
+    const customer = await signup('sneaky@example.com')
+    const order = await book(customer, 30)
+    assert.equal((await post(customer, `/staff/orders/${order.reference}/status`, { from: 'BOOKED' })).status, 403)
+  })
 })

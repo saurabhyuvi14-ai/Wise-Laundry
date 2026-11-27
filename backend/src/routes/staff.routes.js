@@ -13,5 +13,6 @@ router.use(privateCacheControl)
 router.get('/work', staffController.getWorkList)
 router.get('/orders/:id', staffController.getOrder)
 router.post('/orders/:id/bill', staffController.saveBill)
+router.post('/orders/:id/status', staffController.advanceStatus)
 
 export default router

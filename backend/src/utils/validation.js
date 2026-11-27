@@ -200,3 +200,7 @@ export const feedbackSchema = z
 export const expressSwitchSchema = z.object({
   express: z.boolean({ required_error: 'Choose standard or express.', invalid_type_error: 'Choose standard or express.' }),
 })
+
+export const advanceStatusSchema = z.object({
+  from: z.string({ required_error: 'Missing current status.' }).min(1),
+})

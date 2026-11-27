@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ClipboardList, Phone, MapPin, MessageSquareText, RefreshCw, ShieldAlert, PackageCheck, Truck, WashingMachine, AlertTriangle, Scale } from 'lucide-react'
+import { ClipboardList, Phone, MapPin, MessageSquareText, RefreshCw, ShieldAlert, PackageCheck, Check, Truck, WashingMachine, AlertTriangle, Scale } from 'lucide-react'
 import { api } from '../services/api-client'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -8,12 +8,24 @@ import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Spinner'
 import { EmptyState } from '../components/feedback/EmptyState'
 import { ErrorMessage } from '../components/feedback/ErrorMessage'
+import { useToast } from '../components/feedback/Toast'
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge'
 import { ExpressBadge } from '../features/orders/components/DeliverySpeed'
 import { formatSlot, formatDateTime } from '../utils/formatDate'
 import { cn } from '../utils/cn'
 
 const REFRESH_MS = 60_000
+
+// Button text for moving an order to each status.
+const ACTION = {
+  PICKED_UP: 'Picked up',
+  RECEIVED: 'Reached laundry',
+  WASHING: 'Start washing',
+  IRONING: 'Start ironing',
+  READY_FOR_DELIVERY: 'Ready',
+  OUT_FOR_DELIVERY: 'Out for delivery',
+  DELIVERED: 'Delivered',
+}
 
 const GROUPS = [
   { key: 'toPickup', title: 'To pick up', icon: PackageCheck, empty: 'No pickups for this day.' },
@@ -30,7 +42,7 @@ function mapsLink(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
 }
 
-function WorkCard({ c, group, index }) {
+function WorkCard({ c, group, index, onAdvance, moving }) {
   const unit = c.pricingUnit === 'KG' ? 'kg' : 'items'
   return (
     <li className="animate-fade-up" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
@@ -78,13 +90,22 @@ function WorkCard({ c, group, index }) {
           )}
         </div>
 
-        {group !== 'toPickup' && (
-          <div className="mt-3 flex justify-end border-t border-line pt-3">
-            <Button to={`/staff/bill?ref=${encodeURIComponent(c.reference)}`} variant="ghost" size="sm">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          {c.nextStatus && (
+            c.nextStatus === 'OUT_FOR_DELIVERY' && !c.billed ? (
+              <span className="text-xs font-semibold text-amber-700">Weigh & bill before sending out</span>
+            ) : (
+              <Button size="sm" loading={moving} onClick={() => onAdvance(c)}>
+                <Check className="size-4" aria-hidden /> {ACTION[c.nextStatus]}
+              </Button>
+            )
+          )}
+          {group !== 'toPickup' && (
+            <Button to={`/staff/bill?ref=${encodeURIComponent(c.reference)}`} variant="ghost" size="sm" className="ml-auto">
               <Scale className="size-4" aria-hidden /> {c.billed ? 'Check bill' : 'Weigh & bill'}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
     </li>
   )
@@ -97,6 +118,8 @@ export default function StaffWorkPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [moving, setMoving] = useState(null) // order id being updated
+  const toast = useToast()
   const isStaff = ['STAFF', 'ADMIN'].includes(user?.role)
 
   const load = useCallback(async () => {
@@ -118,6 +141,19 @@ export default function StaffWorkPage() {
     const t = setInterval(() => { if (document.visibilityState === 'visible') load() }, REFRESH_MS)
     return () => clearInterval(t)
   }, [load, isStaff])
+
+  async function advance(c) {
+    setMoving(c.id)
+    try {
+      await api.staffAdvanceStatus(c.reference, c.status)
+      toast(`${c.reference}: ${ACTION[c.nextStatus]}`)
+    } catch (err) {
+      toast(err.message, 'error')
+    } finally {
+      setMoving(null)
+      load()
+    }
+  }
 
   if (user && !isStaff) {
     return (
@@ -176,7 +212,7 @@ export default function StaffWorkPage() {
                   <span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-bold text-navy-700">{list.length}</span>
                 </h2>
                 {list.length ? (
-                  <ul className="space-y-3">{list.map((c, i) => <WorkCard key={c.id} c={c} group={key} index={i} />)}</ul>
+                  <ul className="space-y-3">{list.map((c, i) => <WorkCard key={c.id} c={c} group={key} index={i} onAdvance={advance} moving={moving === c.id} />)}</ul>
                 ) : (
                   <Card className="p-5 text-sm text-navy-500"><ClipboardList className="mb-2 size-5 text-navy-400" aria-hidden />{empty}</Card>
                 )}

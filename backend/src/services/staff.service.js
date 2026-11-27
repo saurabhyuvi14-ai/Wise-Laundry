@@ -81,13 +81,14 @@ export function istDayRange(day) {
   return { key, start, end: new Date(start.getTime() + 24 * 3600000) }
 }
 
-function workCard(order, customer) {
+function workCard(order, customer, service) {
   const o = order.toJSON()
   const a = o.addressSnapshot || {}
   return {
     id: o.id,
     reference: o.reference,
     status: o.currentStatus,
+    nextStatus: nextStage(order, service),
     serviceName: o.items?.[0]?.serviceName,
     pricingUnit: o.items?.[0]?.pricingUnit,
     quantity: o.items?.[0]?.quantity ?? null,
@@ -130,9 +131,10 @@ export async function getWorkList({ day } = {}) {
   ])
 
   const userIds = [...new Set([...pickups, ...laundry, ...deliveries].map((o) => String(o.userId)))]
-  const users = await User.find({ _id: { $in: userIds } }).select('fullName phone')
+  const [users, services] = await Promise.all([User.find({ _id: { $in: userIds } }).select('fullName phone'), Service.find()])
   const byId = new Map(users.map((u) => [String(u._id), u]))
-  const card = (o) => workCard(o, byId.get(String(o.userId)))
+  const serviceById = new Map(services.map((s) => [s.serviceId, s]))
+  const card = (o) => workCard(o, byId.get(String(o.userId)), serviceById.get(o.items[0]?.serviceId))
 
   const expressFirst = (a, b) => Number(Boolean(b.express)) - Number(Boolean(a.express))
   const toPickup = pickups.map(card).map((c) => ({ ...c, late: new Date(c.pickupScheduledAt) < start }))
@@ -142,4 +144,46 @@ export async function getWorkList({ day } = {}) {
     day: key,
     groups: { toPickup, atLaundry, toDeliver: deliveries.map(card) },
   }
+}
+
+// ---------- Status buttons ----------
+
+/** The status after the order's current one, following its service's steps; null at the end. */
+function nextStage(order, service) {
+  const stages = service?.stages || []
+  const i = stages.indexOf(order.currentStatus)
+  return i >= 0 && i < stages.length - 1 ? stages[i + 1] : null
+}
+
+/**
+ * Move an order one step forward (Picked up → At laundry → Washing → Out for delivery → Delivered).
+ * `from` is the status the staff member saw, so a double tap or two staff tapping at once can't skip a step.
+ */
+export async function advanceStatus(staffUser, idOrRef, { from }) {
+  const order = await loadOrder(idOrRef)
+  if (order.currentStatus !== from) {
+    throw new ApiError(409, 'ORDER_CHANGED', 'Someone already updated this order. Refresh to see the latest.')
+  }
+  const service = await Service.findOne({ serviceId: order.items[0]?.serviceId })
+  const next = nextStage(order, service)
+  if (!next || order.currentStatus === 'CANCELLED') {
+    throw new ApiError(409, 'ORDER_FINISHED', 'This order has no next step.')
+  }
+  if (next === 'OUT_FOR_DELIVERY' && !order.bill?.finalizedAt) {
+    throw new ApiError(409, 'NOT_BILLED', 'Weigh and bill this order before sending it out.')
+  }
+
+  const now = new Date()
+  const set = { currentStatus: next }
+  // Clock starts when clothes reach the laundry (if billing didn't already start it).
+  if (next === 'RECEIVED' && !order.estimatedDeliveryAt) {
+    set.estimatedDeliveryAt = new Date(now.getTime() + orderTurnaroundHours(order, service) * 3600000)
+  }
+  const updated = await Order.findOneAndUpdate(
+    { _id: order._id, currentStatus: from },
+    { $set: set, $push: { statusHistory: { status: next, changedAt: now, note: `Updated by ${staffUser.fullName}.` } } },
+    { new: true },
+  )
+  if (!updated) throw new ApiError(409, 'ORDER_CHANGED', 'Someone already updated this order. Refresh to see the latest.')
+  return updated.toJSON()
 }
